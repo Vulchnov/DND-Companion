@@ -16,14 +16,23 @@ scrollable_frame = ctk.CTkScrollableFrame(root, width= 1400, height=800)
 scrollable_frame.pack()
 
 
+def set_song_loop(player, check_var):
+    if check_var.get():
+        player.set_playback_mode(vlc.PlaybackMode(1))
+    else:
+        player.set_playback_mode(vlc.PlaybackMode(0))
+    
+
 def add_song():
     frame = ctk.CTkFrame(scrollable_frame, width=1000, height=400)
     frame.pack()
     fileName = filedialog.askopenfilename()
     instance = vlc.Instance("--aout=directsound")
-    player = instance.media_player_new()
+    media_list = instance.media_list_new()
+    player = instance.media_list_player_new()
     media = instance.media_new(fileName)
-    player.set_media(media)
+    media_list.add_media(media)
+    player.set_media_list(media_list)
 
     splitName = fileName.split("/")
     name = splitName[len(splitName)-1]
@@ -31,7 +40,12 @@ def add_song():
     song_label.pack()
     slider = ctk.CTkSlider(frame, from_ = 0, to = 100, number_of_steps = 100, command = lambda val, name = name: slider_event(val, name))
     slider.set(100)
-    slider.pack()
+    slider.pack(pady = (0, 20))
+
+    check_var = ctk.BooleanVar(value = False)
+    loop_checkbox = ctk.CTkCheckBox(frame, text="Loop", variable=check_var, onvalue=True, offvalue=False, command= lambda player = player, check_var = check_var: set_song_loop(player, check_var))
+    loop_checkbox.pack()
+
     pause_button = ctk.CTkButton(frame, text = "Play", width = 500, command = lambda name = name: pause_song(name, pause_button))
     pause_button.pack(pady = 20)
 
