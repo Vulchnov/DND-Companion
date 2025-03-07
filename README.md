@@ -1,0 +1,1 @@
+The Soundboard project requires VLC to be installed onto your device
