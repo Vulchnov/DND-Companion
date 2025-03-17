@@ -1,4 +1,3 @@
-import os
 import vlc
 import customtkinter as ctk
 from customtkinter import filedialog
