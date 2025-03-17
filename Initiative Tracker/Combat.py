@@ -122,7 +122,7 @@ def drawInitiative():
         cHealth_label.grid(row = i + 1, column = 2)
 
         health_adjust_frame = ctk.CTkFrame(initiative_frame)
-        health_adjust_frame.grid(row = i+1, column = 3, pady = 10)
+        health_adjust_frame.grid(row = i+1, column = 3, padx = 10, pady = 10)
         cHealth_entry = ctk.CTkEntry(health_adjust_frame, 100, 40)
         cHealth_heal_button = ctk.CTkButton(health_adjust_frame, text = "Heal", command = lambda combatant = initiativeList[i], entry = cHealth_entry: healCombatant(combatant, entry))
         cHealth_harm_button = ctk.CTkButton(health_adjust_frame, text = "Harm", command = lambda combatant = initiativeList[i], entry = cHealth_entry: harmCombatant(combatant, entry))
