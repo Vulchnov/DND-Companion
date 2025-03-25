@@ -1,5 +1,8 @@
 import customtkinter as ctk
 import Combatent
+import socket
+import queue
+import threading
 
 #Lists for keeping track of who is in the combat and the order of initiative
 tempCombatantsList = []
@@ -269,6 +272,29 @@ def buildInitiative():
         tempCombatantsList.remove(nextCombatent)
     initiativeList.append("End")
 
+
+def server():
+    # Create UDP socket
+    BROADCAST_PORT = 5005
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+    # Bind to all network interfaces on the chosen port
+    server_socket.bind(('', BROADCAST_PORT))
+
+    print("Server listening for broadcasts...")
+
+    while True:
+        data, addr = server_socket.recvfrom(1024)  # Receive data
+        print(f"Received broadcast from {addr}: {data.decode()}")
+
+        startScreen()
+        # Send response directly to sender
+        response = f"Server IP: {socket.gethostbyname(socket.gethostname())}"
+        server_socket.sendto(response.encode(), addr)
+
+
+
 def dmScreen():
     #Clear whats currently on the screen
     for child in root.winfo_children():
@@ -376,7 +402,6 @@ def playerStartScreen():
     hasSaveDCCheckBox.configure(command = lambda saveDC_entry = saveDC_entry:hasSaveDCCheckBoxCommand(saveDC_entry, hasSaveDCCheckBox))
 
 
-    
 
 def startScreen():
     for child in root.winfo_children():
@@ -391,7 +416,10 @@ def startScreen():
     player_button.grid(row = 0, column = 1, padx = 20)
 
 
-startScreen()
+def main():
+    thread = threading.Thread(target= server)
+    thread.start()
+    startScreen()
+    root.mainloop()
 
-root.mainloop()
-
+main()
