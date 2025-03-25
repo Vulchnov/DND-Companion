@@ -349,7 +349,8 @@ def dmScreen():
     combat_start_button.grid(row = 0, column = 4)
 
 
-def playerConnect(name):
+def playerConnect(name_entry):
+    name = name_entry.get()
     Connection.establishUDPSender(name)
 
 
@@ -370,7 +371,7 @@ def playerStartScreen():
     health_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Health...")
     ac_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Armor Class...")
     saveDC_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Save DC...")
-    connect_button = ctk.CTkButton(root, 100, 40, text= "Connect", command= lambda name = name_entry.get():playerConnect(name))
+    connect_button = ctk.CTkButton(root, 100, 40, text= "Connect", command= lambda name_entry = name_entry:playerConnect(name_entry))
 
     entry_frame.pack(pady=20)
     name_entry.grid(padx = 10, row = 0, column = 0)
