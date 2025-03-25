@@ -20,7 +20,7 @@ def establishUDPLisener():
     sockets.append(server_socket)
     while True:
         try:
-            data, addr = server_socket.recvfrom(1024)  # Receive data
+            data, addr = server_socket.recvfrom(2048)  # Receive data
             print(f"Received broadcast from {addr}: {data.decode()}")
 
             # Send response directly to sender
@@ -62,7 +62,7 @@ def establishUDPSender(name):
         try:
             response, server_addr = client_socket.recvfrom(2048)
             print(f"Received response from {server_addr}: {response.decode()}")
-            establishTCPSender(server_addr)
+            establishTCPSender(server_addr[0])
         except socket.timeout:
             print("No response received.")
 
@@ -94,7 +94,12 @@ def establishTCPListener():
 
 def establishTCPSender(addr):
     SERVER_HOST = addr  # Replace with the actual IP address of the server
+<<<<<<< Updated upstream
     SERVER_PORT = 2006
+=======
+    SERVER_PORT = 5006
+
+>>>>>>> Stashed changes
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 

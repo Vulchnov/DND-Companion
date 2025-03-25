@@ -1,7 +1,7 @@
 import socket
 
-SERVER_HOST = "192.168.1.148"  # Replace with the actual IP address of the server
-SERVER_PORT = 8080
+SERVER_HOST = "192.168.1.14"  # Replace with the actual IP address of the server
+SERVER_PORT = 5006
 
 
 client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
