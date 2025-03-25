@@ -94,15 +94,8 @@ def establishTCPListener():
 
 def establishTCPSender(addr):
     SERVER_HOST = addr  # Replace with the actual IP address of the server
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-    SERVER_PORT = 2006
-=======
-=======
->>>>>>> Stashed changes
-    SERVER_PORT = 5006
 
->>>>>>> Stashed changes
+    SERVER_PORT = 5006
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
