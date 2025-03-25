@@ -215,12 +215,13 @@ def addCombatant(display_combatant_button, combatant_entry_frame, name_entry, in
         health = int(health_entry.get())
     if not saveDC_entry.get() == '':
         SaveDC = int(saveDC_entry.get())
-    temp = Combatent.Combatent(int(initiative_entry.get()), int(dex_entry.get()), name_entry.get(), isPlayerCheckBox.get(), health, int(ac_entry.get()), SaveDC)
-
-    combatantsList.append(temp)
-    if isPlayerCheckBox.get():
-        playerList.append(temp)
-
+    name = name_entry.get()
+    initiative = int(initiative_entry.get())
+    dex = int(dex_entry.get())
+    isPlayer = isPlayerCheckBox.get()
+    ac = int(ac_entry.get())
+    
+    
     initiative_entry.delete(0, ctk.END)
     dex_entry.delete(0, ctk.END)
     name_entry.delete(0, ctk.END)
@@ -230,24 +231,35 @@ def addCombatant(display_combatant_button, combatant_entry_frame, name_entry, in
     isPlayerCheckBox.deselect()
     hasSaveDCCheckBox.deselect()
 
-    tempCombatantsList.append(temp)
     combatant_entry_frame.pack_forget()
     checkBoxFrame.pack_forget()
     add_comabtant_button.pack_forget()
     saveDC_entry.grid_forget()
     display_combatant_button.pack()
+
+    createCombatant(name, initiative, dex, isPlayer, health, ac, SaveDC, scrollable_frame)
+
+
+def createCombatant(name, initiative, dex, isPlayer, health, ac, saveDC, scrollable_frame):
+    temp = Combatent.Combatent(initiative, dex, name, isPlayer, health, ac, saveDC)
+
+    combatantsList.append(temp)
+    if isPlayer:
+        playerList.append(temp)
+
+
     if len(initiativeList)>0:
         currentTurn = initiativeList[0]
     else:
         currentTurn = temp
+    tempCombatantsList.append(temp)
+
     buildInitiative()
 
     if combat_start:
         while not initiativeList[0] == currentTurn:
             nextInitiative(scrollable_frame)
     drawInitiative(scrollable_frame)
-
-
 
 def buildInitiative():
     global tempCombatantsList
@@ -355,6 +367,8 @@ def playerConnect(name_entry):
 
 
 def playerStartScreen():
+    global isDM 
+    isDM = False
     #Clear whats currently on the screen
     for child in root.winfo_children():
         child.destroy()
@@ -366,22 +380,20 @@ def playerStartScreen():
 
     entry_frame = ctk.CTkFrame(root, 600, 100)
     name_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Name...")
-    initiative_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Initiative...")
     dex_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Dex Mod...")
-    health_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Health...")
     ac_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Armor Class...")
     saveDC_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Save DC...")
     connect_button = ctk.CTkButton(root, 100, 40, text= "Connect", command= lambda name_entry = name_entry:playerConnect(name_entry))
 
     entry_frame.pack(pady=20)
     name_entry.grid(padx = 10, row = 0, column = 0)
-    initiative_entry.grid(padx = 10, row = 0, column = 1)
-    dex_entry.grid(padx = 10, row = 0, column = 2)
-    health_entry.grid(padx = 10, row = 0, column = 3)
-    ac_entry.grid(padx = 10, row = 0, column = 4)
+    dex_entry.grid(padx = 10, row = 0, column = 1)
+    ac_entry.grid(padx = 10, row = 0, column = 2)
     connect_button.pack()
 
     hasSaveDCCheckBox.configure(command = lambda saveDC_entry = saveDC_entry:hasSaveDCCheckBoxCommand(saveDC_entry, hasSaveDCCheckBox))
+
+
 
 
 

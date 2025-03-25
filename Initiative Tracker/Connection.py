@@ -77,19 +77,19 @@ def establishTCPListener():
     server_socket.bind(('', SERVER_PORT))
     server_socket.listen(1)
 
-    print(f"Server listening on {SERVER_HOST}:{SERVER_PORT}")
-
-    client_socket, client_address = server_socket.accept()
-    print(f"Accepted connection from {client_address[0]}:{client_address[1]}")
-
-    data = client_socket.recv(1024).decode()
-    print(f"Received: {data}")
-
-    response = "Hello, client!"
-    client_socket.send(response.encode())
-
     sockets.append(server_socket)
+    print(f"Server listening on {SERVER_HOST}:{SERVER_PORT}")
+    try:
+        client_socket, client_address = server_socket.accept()
+        print(f"Accepted connection from {client_address[0]}:{client_address[1]}")
 
+        data = client_socket.recv(1024).decode()
+        print(f"Received: {data}")
+
+        response = "Hello, client!"
+        client_socket.send(response.encode())
+    except socket.error:
+        return
 
 
 def establishTCPSender(addr):
@@ -118,6 +118,6 @@ def establishTCPSender(addr):
 
 def closeAll():
     global sockets
-    for socketObj in sockets:
-        sockets.remove(socketObj)
+    for i in range(len(sockets)):
+        socketObj = sockets.pop(0)
         socketObj.close()
