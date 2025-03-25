@@ -351,13 +351,12 @@ def dmScreen():
 
 def playerConnect(name):
     Connection.establishUDPSender(name)
-    
+
 
 def playerStartScreen():
     #Clear whats currently on the screen
     for child in root.winfo_children():
         child.destroy()
-
 
     hasSaveDC = ctk.BooleanVar(value=False)
 
@@ -398,7 +397,8 @@ def startScreen():
     player_button.grid(row = 0, column = 1, padx = 20)
 
 
-Connection.establishTCPListener()
+tcpListener = threading.Thread(target=Connection.establishTCPListener)
+tcpListener.start()
 
 startScreen()
 root.mainloop()
