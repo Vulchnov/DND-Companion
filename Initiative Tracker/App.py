@@ -1,8 +1,7 @@
 import customtkinter as ctk
 import Combatent
-import socket
-import queue
 import threading
+import Connection
 
 #Lists for keeping track of who is in the combat and the order of initiative
 tempCombatantsList = []
@@ -15,11 +14,11 @@ combat_start = False
 isDM = False
 player = None
 
-
 #Main Window
 root = ctk.CTk()
 root.geometry("1920x1080")
 root.title("DnD Companion")
+
 
 def nextInitiative(scrollable_frame):
     global initiativeList
@@ -273,29 +272,11 @@ def buildInitiative():
     initiativeList.append("End")
 
 
-def server():
-    # Create UDP socket
-    BROADCAST_PORT = 5005
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-
-    # Bind to all network interfaces on the chosen port
-    server_socket.bind(('', BROADCAST_PORT))
-
-    print("Server listening for broadcasts...")
-
-    while True:
-        data, addr = server_socket.recvfrom(1024)  # Receive data
-        print(f"Received broadcast from {addr}: {data.decode()}")
-
-        startScreen()
-        # Send response directly to sender
-        response = f"Server IP: {socket.gethostbyname(socket.gethostname())}"
-        server_socket.sendto(response.encode(), addr)
-
-
 
 def dmScreen():
+
+    clientListen = threading.Thread(target= Connection.listenForNewClient)
+    clientListen.start()
     #Clear whats currently on the screen
     for child in root.winfo_children():
         child.destroy()
@@ -368,8 +349,9 @@ def dmScreen():
     combat_start_button.grid(row = 0, column = 4)
 
 
-def playerConnect():
-    pass
+def playerConnect(name):
+    Connection.establishUDPSender(name)
+    
 
 def playerStartScreen():
     #Clear whats currently on the screen
@@ -389,7 +371,7 @@ def playerStartScreen():
     health_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Health...")
     ac_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Armor Class...")
     saveDC_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Save DC...")
-    connect_button = ctk.CTkButton(root, 100, 40, text= "Connect", command=playerConnect)
+    connect_button = ctk.CTkButton(root, 100, 40, text= "Connect", command= lambda name = name_entry.get():playerConnect(name))
 
     entry_frame.pack(pady=20)
     name_entry.grid(padx = 10, row = 0, column = 0)
@@ -416,10 +398,9 @@ def startScreen():
     player_button.grid(row = 0, column = 1, padx = 20)
 
 
-def main():
-    thread = threading.Thread(target= server)
-    thread.start()
-    startScreen()
-    root.mainloop()
+Connection.establishTCPListener()
 
-main()
+startScreen()
+root.mainloop()
+
+Connection.closeAll()
