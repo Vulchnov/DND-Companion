@@ -275,7 +275,7 @@ def buildInitiative():
 
 def dmScreen():
 
-    clientListen = threading.Thread(target= Connection.listenForNewClient)
+    clientListen = threading.Thread(target= Connection.establishUDPLisener)
     clientListen.start()
     #Clear whats currently on the screen
     for child in root.winfo_children():

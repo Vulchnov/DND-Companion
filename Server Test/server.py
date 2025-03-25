@@ -1,7 +1,7 @@
 import socket
 
 SERVER_HOST = '0.0.0.0'  # Listen on all available interfaces
-SERVER_PORT = 12345
+SERVER_PORT = 5006
 
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server_socket.bind(('', SERVER_PORT))

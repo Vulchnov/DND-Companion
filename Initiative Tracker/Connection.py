@@ -30,8 +30,6 @@ def establishUDPLisener():
             connections[data.decode()] = addr
         except:
             break
-    sockets.remove(server_socket)
-    server_socket.close()
 
 def establishUDPSender(name):
     BROADCAST_PORT = 5005
@@ -62,7 +60,7 @@ def establishUDPSender(name):
         # Listen for response
         client_socket.settimeout(3)  # Wait for a response for up to 3 seconds
         try:
-            response, server_addr = client_socket.recvfrom(1024)
+            response, server_addr = client_socket.recvfrom(2048)
             print(f"Received response from {server_addr}: {response.decode()}")
             establishTCPSender(server_addr)
         except socket.timeout:
@@ -96,8 +94,7 @@ def establishTCPListener():
 
 def establishTCPSender(addr):
     SERVER_HOST = addr  # Replace with the actual IP address of the server
-    SERVER_PORT = 8080
-
+    SERVER_PORT = 2006
 
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
