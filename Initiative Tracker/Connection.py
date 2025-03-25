@@ -1,4 +1,5 @@
 import socket
+import select
 
 connections = {}
 sockets = []
@@ -74,22 +75,36 @@ def establishTCPListener():
     SERVER_PORT = 5006
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setblocking(False)
     server_socket.bind(('', SERVER_PORT))
-    server_socket.listen(1)
+    server_socket.listen(10)
 
     sockets.append(server_socket)
     print(f"Server listening on {SERVER_HOST}:{SERVER_PORT}")
-    try:
-        client_socket, client_address = server_socket.accept()
-        print(f"Accepted connection from {client_address[0]}:{client_address[1]}")
+    clients = [server_socket]
 
-        data = client_socket.recv(1024).decode()
-        print(f"Received: {data}")
+    while True:
+        try:
+            readable, writable, errored = select.select(clients, [], [], 0.1)
+            for s in readable:
+                if s is server_socket:
+                    client_socket, client_address = server_socket.accept()
+                    print(f"Accepted connection from {client_address[0]}:{client_address[1]}")
+                    clients.append(client_socket)
+                else:
+                    data = client_socket.recv(1024).decode()
+                    if not data:
+                        clients.remove(s)
+                        s.close
+                        continue
+                    print(f"Received: {data}")
 
-        response = "Hello, client!"
-        client_socket.send(response.encode())
-    except socket.error:
-        return
+                    response = "Hello, client!"
+                    client_socket.send(response.encode())
+        except socket.error:
+            break
+
+                
 
 
 def establishTCPSender(addr):

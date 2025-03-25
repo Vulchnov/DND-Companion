@@ -395,8 +395,6 @@ def playerStartScreen():
 
 
 
-
-
 def startScreen():
     for child in root.winfo_children():
         child.destroy()
