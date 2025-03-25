@@ -30,17 +30,21 @@ def establishUDPLisener():
             data, addr = server_socket.recvfrom(2048)  # Receive data
             data = data.decode()
             info = data.split(":")
-            print(f"Received broadcast from {addr}: {info[2]}")
+            print(f"Received broadcast from {addr}: {info[1]}")
 
             # Send response directly to sender
             response = f"Server IP: {socket.gethostbyname(socket.gethostname())}"
             server_socket.sendto(response.encode(), addr)
 
             saveDC = None
-            if not info[4] == "None":
-                saveDC = int(info[4])
-            temp = combatant.combatant(0, int(info[1]), int(info[2]), True, None, info[3], saveDC, True)
-            playerList.append(temp)
+            if not info[3] == "None":
+                saveDC = int(info[3])
+            
+            createCombatant(info[0], 0, int(info[1]), True, None, int(info[2]), saveDC, True)
+            temp = None
+            for combatant in playerList:
+                if combatant.pName == info[0]:
+                    temp = combatant
             connections[info[2]] = (addr, temp)
         except:
             break
@@ -556,7 +560,7 @@ def playerConnect(name_entry, dex_entry, ac_entry, saveDC_entry):
     if not saveDC_entry.get() == "":
         saveDC = saveDC_entry.get()
 
-    message = f"{dex}:{name}:{ac}:{saveDC}"
+    message = f"{name}:{dex}:{ac}:{saveDC}"
     establishUDPSender(message)
 
 
