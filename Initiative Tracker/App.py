@@ -1,5 +1,5 @@
 import customtkinter as ctk
-import Combatent
+import combatant
 import threading
 
 
@@ -10,10 +10,6 @@ import select
 #Socket Globals
 connections = {}
 sockets = []
-
-
-
-
 
 
 def establishUDPLisener():
@@ -32,17 +28,24 @@ def establishUDPLisener():
     while True:
         try:
             data, addr = server_socket.recvfrom(2048)  # Receive data
-            print(f"Received broadcast from {addr}: {data.decode()}")
+            data = data.decode()
+            info = data.split(":")
+            print(f"Received broadcast from {addr}: {info[2]}")
 
             # Send response directly to sender
             response = f"Server IP: {socket.gethostbyname(socket.gethostname())}"
             server_socket.sendto(response.encode(), addr)
 
-            connections[data.decode()] = addr
+            saveDC = None
+            if not info[4] == "None":
+                saveDC = int(info[4])
+            temp = combatant.combatant(0, int(info[1]), int(info[2]), True, None, info[3], saveDC, True)
+            playerList.append(temp)
+            connections[info[2]] = (addr, temp)
         except:
             break
 
-def establishUDPSender(name):
+def establishUDPSender(message):
     BROADCAST_PORT = 5005
 
     # Step 1: Get the local hostname.
@@ -64,7 +67,6 @@ def establishUDPSender(name):
         client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-        message = name
         client_socket.sendto(message.encode(), (BROADCAST_IP, BROADCAST_PORT))
         print("Broadcast message sent.")
 
@@ -73,7 +75,8 @@ def establishUDPSender(name):
         try:
             response, server_addr = client_socket.recvfrom(2048)
             print(f"Received response from {server_addr}: {response.decode()}")
-            establishTCPSender(server_addr[0])
+            connections["DM"] = server_addr[0]
+            establishTCPSender(server_addr[0], "Hello")
         except socket.timeout:
             print("No response received.")
 
@@ -102,22 +105,18 @@ def establishTCPListener():
                     print(f"Accepted connection from {client_address[0]}:{client_address[1]}")
                     clients.append(client_socket)
                 else:
-                    data = client_socket.recv(1024).decode()
+                    data = client_socket.recv(2048).decode()
                     if not data:
                         clients.remove(s)
                         s.close
                         continue
                     print(f"Received: {data}")
+                    parseMessage(data)
 
-                    response = "Hello, client!"
-                    client_socket.send(response.encode())
         except socket.error:
             break
 
-                
-
-
-def establishTCPSender(addr):
+def establishTCPSender(addr, message):
     SERVER_HOST = addr  # Replace with the actual IP address of the server
 
     SERVER_PORT = 5006
@@ -128,11 +127,7 @@ def establishTCPSender(addr):
         client_socket.connect((SERVER_HOST, SERVER_PORT))
         print(f"Connected to {SERVER_HOST}:{SERVER_PORT}")
 
-        message = "Hello, server!"
         client_socket.send(message.encode())
-
-        data = client_socket.recv(1024).decode()
-        print(f"Received: {data}")
 
     except socket.error as e:
         print(f"Connection error: {e}")
@@ -148,6 +143,47 @@ def closeAll():
         socketObj.close()
 
 
+def parseMessage(message):
+    messageSplit = message.split("/")
+    cmd = messageSplit[0]
+    match cmd:
+        case "addCombatant":
+            info = messageSplit[1].split(":")
+            createCombatant(info[1], info[2], info[3], True, None, info[4], info[5], True)
+
+        case "updateInitiative":
+            info = messageSplit[1].split(":")
+
+        case "startCombat":
+            startCombat()
+        case _:
+            pass
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 #Lists for keeping track of who is in the combat and the order of initiative
 tempCombatantsList = []
@@ -155,6 +191,7 @@ combatantsList = []
 initiativeList = []
 playerList = []
 info_list_frame = None
+initiative_frame = None
 combat_round = 1
 combat_start = False
 isDM = False
@@ -166,17 +203,17 @@ root.geometry("1920x1080")
 root.title("DnD Companion")
 
 
-def nextInitiative(scrollable_frame):
+def nextInitiative():
     global initiativeList
     global combat_round
     if initiativeList[1] == "End":
         initiativeList.append(initiativeList.pop(0))
         combat_round += 1
     initiativeList.append(initiativeList.pop(0))
-    drawInitiative(scrollable_frame)
+    drawInitiative()
 
 
-def restartCombat(restart_button, next_button, clear_button, combat_start_button, scrollable_frame):
+def restartCombat(restart_button, next_button, clear_button, combat_start_button):
     global initiativeList
     global tempCombatantsList
     global combatantsList
@@ -196,10 +233,10 @@ def restartCombat(restart_button, next_button, clear_button, combat_start_button
     combatantsList = playerList
     initiativeList.clear()
     buildInitiative()
-    drawInitiative(scrollable_frame)
+    drawInitiative()
 
 
-def clearInitiative(restart_button, next_button, clear_button, combat_start_button, scrollable_frame):
+def clearInitiative(restart_button, next_button, clear_button, combat_start_button):
     global initiativeList
     global tempCombatantsList
     global playerList
@@ -214,7 +251,7 @@ def clearInitiative(restart_button, next_button, clear_button, combat_start_butt
     tempCombatantsList.clear()
     playerList.clear()
     combatantsList.clear()
-    drawInitiative(scrollable_frame)
+    drawInitiative()
     
 def startCombat(restart_button, next_button, clear_button, combat_start_button):
     global combat_start
@@ -237,7 +274,7 @@ def hasSaveDCCheckBoxCommand(saveDC_entry, hasSaveDCCheckbox):
     else:
         saveDC_entry.grid_forget()
 
-def removeCombatant(combatant, scrollable_frame):
+def removeCombatant(combatant):
     global initiativeList
     global playerList
     global combatantsList
@@ -246,7 +283,7 @@ def removeCombatant(combatant, scrollable_frame):
     combatantsList.remove(combatant)
     if combatant.isPlayer:
         playerList.remove(combatant)
-    drawInitiative(scrollable_frame)
+    drawInitiative()
 
 def healCombatant(combatant, entry):
     combatant.health += int(entry.get())
@@ -300,13 +337,14 @@ def drawInfoFrame():
 
 
 #Draw the initiative order
-def drawInitiative(scrollable_frame):
+def drawInitiative():
+    global initiative_frame
     global combat_round
     global combat_start
     global isDM
-    for child in scrollable_frame.winfo_children():
+    for child in initiative_frame.winfo_children():
         child.destroy()
-    initiative_frame = ctk.CTkFrame(scrollable_frame, 1400, 800)
+    initiative_frame = ctk.CTkFrame(initiative_frame, 1400, 800)
     initiative_frame.pack()
     
     if not combat_start:
@@ -331,7 +369,7 @@ def drawInitiative(scrollable_frame):
                 cInitiative_label.grid(row = i + 1, column = 1, pady = 10)
 
                 if isDM:
-                    remove_button = ctk.CTkButton(initiative_frame, text= "Remove", command= lambda combatant = initiativeList[i], scrollable_frame =scrollable_frame:removeCombatant(combatant, scrollable_frame))
+                    remove_button = ctk.CTkButton(initiative_frame, text= "Remove", command= lambda combatant = initiativeList[i]:removeCombatant(combatant))
                     remove_button.grid(row = i + 1, column = 2, padx = 20, pady = 10)
 
 
@@ -349,7 +387,7 @@ def displayAddCombatant(display_combatant_button, combatant_entry_frame, name_en
     add_combatant_button.pack()
 
 
-def addCombatant(display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, ac_entry, saveDC_entry, isPlayerCheckBox, hasSaveDCCheckBox, add_comabtant_button, checkBoxFrame, scrollable_frame):
+def addCombatant(display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, ac_entry, saveDC_entry, isPlayerCheckBox, hasSaveDCCheckBox, add_comabtant_button, checkBoxFrame):
     global tempCombatantsList
     global combatantsList
     global initiativeList
@@ -383,11 +421,11 @@ def addCombatant(display_combatant_button, combatant_entry_frame, name_entry, in
     saveDC_entry.grid_forget()
     display_combatant_button.pack()
 
-    createCombatant(name, initiative, dex, isPlayer, health, ac, SaveDC, scrollable_frame)
+    createCombatant(name, initiative, dex, isPlayer, health, ac, SaveDC, False)
 
 
-def createCombatant(name, initiative, dex, isPlayer, health, ac, saveDC, scrollable_frame):
-    temp = Combatent.Combatent(initiative, dex, name, isPlayer, health, ac, saveDC)
+def createCombatant(name, initiative, dex, isPlayer, health, ac, saveDC, connected):
+    temp = combatant.combatant(initiative, dex, name, isPlayer, health, ac, saveDC, connected)
 
     combatantsList.append(temp)
     if isPlayer:
@@ -404,8 +442,8 @@ def createCombatant(name, initiative, dex, isPlayer, health, ac, saveDC, scrolla
 
     if combat_start:
         while not initiativeList[0] == currentTurn:
-            nextInitiative(scrollable_frame)
-    drawInitiative(scrollable_frame)
+            nextInitiative()
+    drawInitiative()
 
 def buildInitiative():
     global tempCombatantsList
@@ -417,22 +455,21 @@ def buildInitiative():
     tempCombatantsList += initiativeList
     initiativeList.clear()
     while len(tempCombatantsList) > 0:
-        nextCombatent = tempCombatantsList[0]
-        for combatent in tempCombatantsList:
-            if combatent.initiative > nextCombatent.initiative:
-                nextCombatent = combatent
-            elif combatent.initiative == nextCombatent.initiative and combatent.dex > nextCombatent.dex:
-                nextCombatent = combatent
-            elif combatent.initiative == nextCombatent.initiative and combatent.dex == nextCombatent.dex and combatent.isPlayer:
-                nextCombatent = combatent
-        initiativeList.append(nextCombatent)
-        tempCombatantsList.remove(nextCombatent)
+        nextcombatant = tempCombatantsList[0]
+        for combatant in tempCombatantsList:
+            if combatant.initiative > nextcombatant.initiative:
+                nextcombatant = combatant
+            elif combatant.initiative == nextcombatant.initiative and combatant.dex > nextcombatant.dex:
+                nextcombatant = combatant
+            elif combatant.initiative == nextcombatant.initiative and combatant.dex == nextcombatant.dex and combatant.isPlayer:
+                nextcombatant = combatant
+        initiativeList.append(nextcombatant)
+        tempCombatantsList.remove(nextcombatant)
     initiativeList.append("End")
 
 
 
 def dmScreen():
-
     clientListen = threading.Thread(target=establishUDPLisener)
     clientListen.start()
     #Clear whats currently on the screen
@@ -441,6 +478,7 @@ def dmScreen():
 
     global isDM
     global info_list_frame
+    global initiative_frame
 
     isDM = True
     
@@ -457,11 +495,11 @@ def dmScreen():
     combat_start_button = ctk.CTkButton(button_frame, text= "Start Combat")
     main_frame = ctk.CTkFrame(root, 1920, 800)
     main_frame.pack()
-    scrollable_frame = ctk.CTkScrollableFrame(main_frame, 1400, 800)
+    initiative_frame = ctk.CTkScrollableFrame(main_frame, 1400, 800)
 
-    next_button.configure(command=lambda scrollable_frame = scrollable_frame:nextInitiative(scrollable_frame))
-    restart_button.configure(command= lambda next_button = next_button, clear_button = clear_button, combat_start_button = combat_start_button, scrollable_frame = scrollable_frame:restartCombat(restart_button, next_button, clear_button, combat_start_button, scrollable_frame))
-    clear_button.configure(command= lambda next_button = next_button, clear_button = clear_button, combat_start_button = combat_start_button, scrollable_frame = scrollable_frame:clearInitiative(restart_button, next_button, clear_button, combat_start_button, scrollable_frame))
+    next_button.configure(command=nextInitiative)
+    restart_button.configure(command= lambda next_button = next_button, clear_button = clear_button, combat_start_button = combat_start_button:restartCombat(restart_button, next_button, clear_button, combat_start_button))
+    clear_button.configure(command= lambda next_button = next_button, clear_button = clear_button, combat_start_button = combat_start_button:clearInitiative(restart_button, next_button, clear_button, combat_start_button))
     combat_start_button.configure(command= lambda next_button = next_button, clear_button = clear_button, combat_start_button = combat_start_button:startCombat(restart_button, next_button, clear_button, combat_start_button))
 
     side_frame = ctk.CTkFrame(main_frame, 500, 800)
@@ -472,9 +510,9 @@ def dmScreen():
     pythagorean_frame.grid(row = 1, column = 0)
 
     #Scrollale Frame for the initiative order
-    scrollable_frame.grid(row = 0, column = 1, pady= 10)
+    initiative_frame.grid(row = 0, column = 1, pady= 10)
 
-    drawInitiative(scrollable_frame)
+    drawInitiative()
 
     isPlayer = ctk.BooleanVar(value=False)
     hasSaveDC = ctk.BooleanVar(value=False)
@@ -501,15 +539,25 @@ def dmScreen():
                                        add_combatant_button = add_combatant_button, ac_entry = ac_entry, saveDC_entry = saveDC_entry, hasSaveDCCheckBox = hasSaveDCCheckBox:displayAddCombatant(display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, isPlayerCheckBox, add_combatant_button, ac_entry, checkBoxFrame, hasSaveDCCheckBox))
     
     add_combatant_button.configure(command = lambda combatant_entry_frame = combatant_entry_frame, name_entry = name_entry, initiative_entry = initiative_entry, dex_entry = dex_entry, health_entry = health_entry,
-                                    isPlayerCheckBox = isPlayerCheckBox, scrollable_frame = scrollable_frame, ac_entry = ac_entry, hassaveDCCheckBox = hasSaveDCCheckBox:addCombatant(display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, ac_entry, saveDC_entry, isPlayerCheckBox,hasSaveDCCheckBox,add_combatant_button, checkBoxFrame, scrollable_frame))
+                                    isPlayerCheckBox = isPlayerCheckBox, ac_entry = ac_entry, hassaveDCCheckBox = hasSaveDCCheckBox:addCombatant(display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, ac_entry, saveDC_entry, isPlayerCheckBox,hasSaveDCCheckBox,add_combatant_button, checkBoxFrame))
 
 
     combat_start_button.grid(row = 0, column = 4)
 
 
-def playerConnect(name_entry):
+def playerScreen():
+    pass
+
+def playerConnect(name_entry, dex_entry, ac_entry, saveDC_entry):
     name = name_entry.get()
-    establishUDPSender(name)
+    dex = dex_entry.get()
+    ac = ac_entry.get()
+    saveDC = None
+    if not saveDC_entry.get() == "":
+        saveDC = saveDC_entry.get()
+
+    message = f"{dex}:{name}:{ac}:{saveDC}"
+    establishUDPSender(message)
 
 
 def playerStartScreen():
@@ -529,7 +577,7 @@ def playerStartScreen():
     dex_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Dex Mod...")
     ac_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Armor Class...")
     saveDC_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Save DC...")
-    connect_button = ctk.CTkButton(root, 100, 40, text= "Connect", command= lambda name_entry = name_entry:playerConnect(name_entry))
+    connect_button = ctk.CTkButton(root, 100, 40, text= "Connect", command= lambda name_entry = name_entry:playerConnect(name_entry, dex_entry, ac_entry, saveDC_entry))
 
     entry_frame.pack(pady=20)
     name_entry.grid(padx = 10, row = 0, column = 0)

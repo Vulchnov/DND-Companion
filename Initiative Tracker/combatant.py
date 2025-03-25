@@ -1,5 +1,5 @@
-class Combatent:
-    def __init__(self, initiative, dex, pName, isPlayer, health, ac, saveDC):
+class combatant:
+    def __init__(self, initiative, dex, pName, isPlayer, health, ac, saveDC, connected):
         self.initiative = initiative
         self.dex = dex
         self.pName = pName
@@ -7,6 +7,7 @@ class Combatent:
         self.health = health
         self.ac = ac
         self.saveDC = saveDC
+        self.connected = connected
 
     def setInitiative(self, initiative):
         self.initiative = initiative
