@@ -1,6 +1,17 @@
 import customtkinter as ctk
 import combatant
 import threading
+from queue import Queue
+from enum import Enum, auto
+
+
+class ticketPurpose(Enum):
+    ADD_COMBATANT = auto()
+
+
+class ticket():
+    pass
+
 
 
 #socket imports
@@ -199,444 +210,403 @@ def parseMessage(message):
 
 
 
+class MainWindow(ctk.CTk):
+    def __init__(self):
+        super().__init__()    
+        #Lists for keeping track of who is in the combat and the order of initiative
+        self.combatantsList = []
+        self.initiativeList = []
+        self.playerList = []
+        self.info_list_frame = None
+        self.initiative_frame = None
+        self.combat_round = 1
+        self.combat_start = False
+        self.isDM = False
 
-#Lists for keeping track of who is in the combat and the order of initiative
-tempCombatantsList = []
-combatantsList = []
-initiativeList = []
-playerList = []
-info_list_frame = None
-initiative_frame = None
-combat_round = 1
-combat_start = False
-isDM = False
-
-#Main Window
-root = ctk.CTk()
-root.geometry("1920x1080")
-root.title("DnD Companion")
-
-
-def nextInitiative():
-    global initiativeList
-    global combat_round
-    if initiativeList[1] == "End":
-        initiativeList.append(initiativeList.pop(0))
-        combat_round += 1
-    initiativeList.append(initiativeList.pop(0))
-    drawInitiative()
+        #Main Window
+        self.geometry("1920x1080")
+        self.title("DnD Companion")
 
 
-def restartCombat(restart_button, next_button, clear_button, combat_start_button):
-    global initiativeList
-    global tempCombatantsList
-    global combatantsList
-    global combat_start
-    global playerList
-    combat_start = False
-    combat_start_button.grid(row = 0, column = 4)
-    next_button.grid_forget()
-    clear_button.grid_forget()
-    restart_button.grid_forget()
-    for player in playerList:
-        if not player.connected:
-            dialog = ctk.CTkInputDialog(text= "New initiative for " + player.pName)
-            newInitiative = int(dialog.get_input())
-            player.setInitiative(newInitiative)
-        else:
-            establishTCPSender(connections[player.pName][0], "askInitiative")
-
-    tempCombatantsList = playerList
-    combatantsList = playerList
-    initiativeList.clear()
-    buildInitiative()
-    drawInitiative()
-
-def updateInitiative(player, initiative):
-    player.setInitiative(initiative)
-    buildInitiative()
-    drawInitiative()
-
-def clearInitiative(restart_button, next_button, clear_button, combat_start_button):
-    global initiativeList
-    global tempCombatantsList
-    global playerList
-    global combatantsList
-    global combat_start 
-    combat_start = False
-    combat_start_button.grid(row = 0, column = 4)
-    next_button.grid_forget()
-    clear_button.grid_forget()
-    restart_button.grid_forget()
-    initiativeList.clear()
-    tempCombatantsList.clear()
-    playerList.clear()
-    combatantsList.clear()
-    drawInitiative()
-    
-def startCombat(restart_button, next_button, clear_button, combat_start_button):
-    global combat_start
-    global playerList
-    combat_start = True
-    combat_start_button.grid_forget()
-    next_button.grid(row = 0, column = 0, padx = 10)
-    clear_button.grid(row = 0, column = 1, padx = 10)
-    restart_button.grid(row = 0, column = 2, padx = 10)
-
-def isPlayerCheckBoxCommand(health_entry, isPlayerCheckbox):
-    if(isPlayerCheckbox.get()):
-        health_entry.grid_forget()
-    else:
-        health_entry.grid(row= 0, column = 4, padx = 10)
-
-def hasSaveDCCheckBoxCommand(saveDC_entry, hasSaveDCCheckbox):
-    if(hasSaveDCCheckbox.get()):
-        saveDC_entry.grid(row= 0, column = 5, padx = 10)
-    else:
-        saveDC_entry.grid_forget()
-
-def removeCombatant(combatant):
-    global initiativeList
-    global playerList
-    global combatantsList
-
-    initiativeList.remove(combatant)
-    combatantsList.remove(combatant)
-    if combatant.isPlayer:
-        playerList.remove(combatant)
-    drawInitiative()
-    drawInfoFrame()
-
-def healCombatant(combatant, entry):
-    combatant.health += int(entry.get())
-    drawInfoFrame()
+    def nextInitiative(self):
+        if self.initiativeList[1] == "End":
+            self.initiativeList.append(self.initiativeList.pop(0))
+            self.combat_round += 1
+        self.initiativeList.append(self.initiativeList.pop(0))
+        self.drawInitiative()
 
 
-def harmCombatant(combatant, entry):
-    combatant.health -= int(entry.get())
-    drawInfoFrame()
+    def restartCombat(self, restart_button, next_button, clear_button, combat_start_button):
+        self.combat_start = False
+        combat_start_button.grid(row = 0, column = 4)
+        next_button.grid_forget()
+        clear_button.grid_forget()
+        restart_button.grid_forget()
+        for player in self.playerList:
+            if not player.connected:
+                dialog = ctk.CTkInputDialog(text= "New initiative for " + player.pName)
+                newInitiative = int(dialog.get_input())
+                player.setInitiative(newInitiative)
+            else:
+                establishTCPSender(connections[player.pName][0], "askInitiative")
 
+        self.combatantsList = self.playerList.copy()
+        self.initiativeList.clear()
+        self.buildInitiative()
+        self.drawInitiative()
 
-def drawInfoFrame():
-    global initiativeList
-    global info_list_frame
-    global isDM
+    def updateInitiative(self, player, initiative):
+        player.setInitiative(initiative)
+        self.buildInitiative()
+        self.drawInitiative()
 
-    for child in info_list_frame.winfo_children():
-        child.destroy()
-
-    name_label = ctk.CTkLabel(info_list_frame, text="Name", font = ctk.CTkFont(size=15, weight="bold"))
-    name_label.grid(row = 0, column = 0)
-    AC_label = ctk.CTkLabel(info_list_frame, text="AC", font = ctk.CTkFont(size=15, weight="bold"))
-    AC_label.grid(row = 0, column = 1, padx = 20)
-    DC_label = ctk.CTkLabel(info_list_frame, text="Save DC", font = ctk.CTkFont(size=15, weight="bold"))
-    DC_label.grid(row = 0, column = 2, padx = 20)
-    health_label = ctk.CTkLabel(info_list_frame, text="Health", font = ctk.CTkFont(size=15, weight="bold"))
-    health_label.grid(row = 0, column = 3)
-    
-    if isDM:
-        for i in range(len(combatantsList)):
-            pName_label = ctk.CTkLabel(info_list_frame, text = combatantsList[i].pName)
-            pAC_label = ctk.CTkLabel(info_list_frame, text = combatantsList[i].ac)
-            pName_label.grid(row = i + 1, column = 0)
-            pAC_label.grid(row = i + 1, column = 1)
-
-            if not combatantsList[i].saveDC == None:
-                psaveDCInitiative_label = ctk.CTkLabel(info_list_frame, text = combatantsList[i].saveDC)
-                psaveDCInitiative_label.grid(row = i + 1, column = 2)
-
-            if not combatantsList[i].health == None:
-                cHealth_label = ctk.CTkLabel(info_list_frame, text = combatantsList[i].health)
-                cHealth_label.grid(row = i + 1, column = 3)
-                health_adjust_frame = ctk.CTkFrame(info_list_frame)
-                health_adjust_frame.grid(row = i+1, column = 4, padx = 10, pady = 10)
-                cHealth_entry = ctk.CTkEntry(health_adjust_frame, 100, 40)
-                cHealth_heal_button = ctk.CTkButton(health_adjust_frame, text = "Heal", command = lambda combatant = combatantsList[i], entry = cHealth_entry: healCombatant(combatant, entry))
-                cHealth_harm_button = ctk.CTkButton(health_adjust_frame, text = "Harm", command = lambda combatant = combatantsList[i], entry = cHealth_entry: harmCombatant(combatant, entry))
-                cHealth_heal_button.pack()
-                cHealth_entry.pack()
-                cHealth_harm_button.pack()
-
-
-#Draw the initiative order
-def drawInitiative():
-    global initiative_frame
-    global combat_round
-    global isDM
-    for child in initiative_frame.winfo_children():
-        child.destroy()
+    def clearInitiative(self, restart_button, next_button, clear_button, combat_start_button):
+        self.combat_start = False
+        combat_start_button.grid(row = 0, column = 4)
+        next_button.grid_forget()
+        clear_button.grid_forget()
+        restart_button.grid_forget()
+        self.initiativeList.clear()
+        self.playerList.clear()
+        self.combatantsList.clear()
+        self.drawInitiative()
         
-    #Inside Frame
-    name_label = ctk.CTkLabel(initiative_frame, text = "Name", font = ctk.CTkFont(size = 15, weight = "bold"))
-    name_label.grid(row = 0, column = 0)
-    initiative_label = ctk.CTkLabel(initiative_frame, text = "Initiative", font = ctk.CTkFont(size = 15, weight = "bold"))
-    initiative_label.grid(row = 0, column = 1, padx = 200)
+    def startCombat(self, restart_button, next_button, clear_button, combat_start_button):
+        self.combat_start = True
+        combat_start_button.grid_forget()
+        next_button.grid(row = 0, column = 0, padx = 10)
+        clear_button.grid(row = 0, column = 1, padx = 10)
+        restart_button.grid(row = 0, column = 2, padx = 10)
 
-    if combat_round == 1 and not isDM and len(initiativeList) > 0:
-        cName_label = ctk.CTkLabel(initiative_frame, text = initiativeList[0].pName)
-        cInitiative_label = ctk.CTkLabel(initiative_frame, text = initiativeList[0].initiative)
-        cName_label.grid(row = 1, column = 0, pady = 10)
-        cInitiative_label.grid(row = 1, column = 1, pady = 10)
-    else:
-        for i in range(len(initiativeList)):
-            if not initiativeList[i] == "End":
-                cName_label = ctk.CTkLabel(initiative_frame, text = initiativeList[i].pName)
-                cInitiative_label = ctk.CTkLabel(initiative_frame, text = initiativeList[i].initiative)
-                cName_label.grid(row = i + 1, column = 0, pady = 10)
-                cInitiative_label.grid(row = i + 1, column = 1, pady = 10)
+    def isPlayerCheckBoxCommand(self, health_entry, isPlayerCheckbox):
+        if(isPlayerCheckbox.get()):
+            health_entry.grid_forget()
+        else:
+            health_entry.grid(row= 0, column = 4, padx = 10)
 
-                if isDM:
-                    remove_button = ctk.CTkButton(initiative_frame, text= "Remove", command= lambda combatant = initiativeList[i]:removeCombatant(combatant))
-                    remove_button.grid(row = i + 1, column = 2, padx = 20, pady = 10)
+    def hasSaveDCCheckBoxCommand(self, saveDC_entry, hasSaveDCCheckbox):
+        if(hasSaveDCCheckbox.get()):
+            saveDC_entry.grid(row= 0, column = 5, padx = 10)
+        else:
+            saveDC_entry.grid_forget()
 
-
-def displayAddCombatant(display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, isPlayerCheckBox, add_combatant_button, ac_entry, checkBoxFrame, hasSaveDCCHeckbox):
-    display_combatant_button.pack_forget()
-    checkBoxFrame.pack()
-    combatant_entry_frame.pack(pady = 10)
-    isPlayerCheckBox.grid(row = 0, column = 0, padx = 10)
-    hasSaveDCCHeckbox.grid(row = 0, column = 1, padx = 10)
-    name_entry.grid(row = 0, column = 0, padx = 10)
-    initiative_entry.grid(row = 0, column = 1, padx = 10)
-    dex_entry.grid(row = 0, column = 2, padx = 10)
-    ac_entry.grid(row =0, column = 3, padx = 10)
-    health_entry.grid(row= 0, column = 4, padx = 10)
-    add_combatant_button.pack()
+    def removeCombatant(self, combatant):
+        self.initiativeList.remove(combatant)
+        self.combatantsList.remove(combatant)
+        if combatant.isPlayer:
+            self.playerList.remove(combatant)
+        self.drawInitiative()
 
 
-def addCombatant(display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, ac_entry, saveDC_entry, isPlayerCheckBox, hasSaveDCCheckBox, add_comabtant_button, checkBoxFrame):
-    global tempCombatantsList
-    global combatantsList
-    global initiativeList
-    global combat_start
-    global playerList
-    health = None
-    SaveDC = None
-    if not health_entry.get() =='':
-        health = int(health_entry.get())
-    if not saveDC_entry.get() == '':
-        SaveDC = int(saveDC_entry.get())
-    name = name_entry.get()
-    initiative = int(initiative_entry.get())
-    dex = int(dex_entry.get())
-    isPlayer = isPlayerCheckBox.get()
-    ac = int(ac_entry.get())
-    
-    
-    initiative_entry.delete(0, ctk.END)
-    dex_entry.delete(0, ctk.END)
-    name_entry.delete(0, ctk.END)
-    health_entry.delete(0, ctk.END)
-    ac_entry.delete(0, ctk.END)
-    saveDC_entry.delete(0, ctk.END)
-    isPlayerCheckBox.deselect()
-    hasSaveDCCheckBox.deselect()
-
-    combatant_entry_frame.pack_forget()
-    checkBoxFrame.pack_forget()
-    add_comabtant_button.pack_forget()
-    saveDC_entry.grid_forget()
-    display_combatant_button.pack()
-
-    createCombatant(name, initiative, dex, isPlayer, health, ac, SaveDC, False)
+    def healCombatant(self, combatant, entry):
+        combatant.health += int(entry.get())
+        self.drawInfoFrame()
 
 
-def createCombatant(name, initiative, dex, isPlayer, health, ac, saveDC, connected):
-    temp = combatant.combatant(initiative, dex, name, isPlayer, health, ac, saveDC, connected)
-
-    combatantsList.append(temp)
-    if isPlayer:
-        playerList.append(temp)
+    def harmCombatant(self, combatant, entry):
+        combatant.health -= int(entry.get())
+        self.drawInfoFrame()
 
 
-    if len(initiativeList)>0:
-        currentTurn = initiativeList[0]
-    else:
-        currentTurn = temp
-    tempCombatantsList.append(temp)
+    def drawInfoFrame(self):
+        for child in self.info_list_frame.winfo_children():
+            child.destroy()
 
-    buildInitiative()
+        name_label = ctk.CTkLabel(self.info_list_frame, text="Name", font = ctk.CTkFont(size=15, weight="bold"))
+        name_label.grid(row = 0, column = 0)
+        AC_label = ctk.CTkLabel(self.info_list_frame, text="AC", font = ctk.CTkFont(size=15, weight="bold"))
+        AC_label.grid(row = 0, column = 1, padx = 20)
+        DC_label = ctk.CTkLabel(self.info_list_frame, text="Save DC", font = ctk.CTkFont(size=15, weight="bold"))
+        DC_label.grid(row = 0, column = 2, padx = 20)
+        health_label = ctk.CTkLabel(self.info_list_frame, text="Health", font = ctk.CTkFont(size=15, weight="bold"))
+        health_label.grid(row = 0, column = 3)
+        
+        if self.isDM:
+            for i in range(len(self.combatantsList)):
+                pName_label = ctk.CTkLabel(self.info_list_frame, text = self.combatantsList[i].pName)
+                pAC_label = ctk.CTkLabel(self.info_list_frame, text = self.combatantsList[i].ac)
+                pName_label.grid(row = i + 1, column = 0)
+                pAC_label.grid(row = i + 1, column = 1)
 
-    if combat_start:
-        while not initiativeList[0] == currentTurn:
-            nextInitiative()
-    drawInitiative()
-    if not combat_start:
-        drawInfoFrame()
+                if not self.combatantsList[i].saveDC == None:
+                    psaveDCInitiative_label = ctk.CTkLabel(self.info_list_frame, text = self.combatantsList[i].saveDC)
+                    psaveDCInitiative_label.grid(row = i + 1, column = 2)
 
-def buildInitiative():
-    global tempCombatantsList
-    global initiativeList
-    try:
-        initiativeList.remove("End")
-    except:
+                if not self.combatantsList[i].health == None:
+                    cHealth_label = ctk.CTkLabel(self.info_list_frame, text = self.combatantsList[i].health)
+                    cHealth_label.grid(row = i + 1, column = 3)
+                    health_adjust_frame = ctk.CTkFrame(self.info_list_frame)
+                    health_adjust_frame.grid(row = i+1, column = 4, padx = 10, pady = 10)
+                    cHealth_entry = ctk.CTkEntry(health_adjust_frame, 100, 40)
+                    cHealth_heal_button = ctk.CTkButton(health_adjust_frame, text = "Heal", command = lambda combatant = self.combatantsList[i], entry = cHealth_entry: self.healCombatant(combatant, entry))
+                    cHealth_harm_button = ctk.CTkButton(health_adjust_frame, text = "Harm", command = lambda combatant = self.combatantsList[i], entry = cHealth_entry: self.harmCombatant(combatant, entry))
+                    cHealth_heal_button.pack()
+                    cHealth_entry.pack()
+                    cHealth_harm_button.pack()
+
+
+    #Draw the initiative order
+    def drawInitiative(self):
+        for child in self.initiative_frame.winfo_children():
+            child.destroy()
+
+        self.drawInfoFrame()
+
+        #Inside Frame
+        name_label = ctk.CTkLabel(self.initiative_frame, text = "Name", font = ctk.CTkFont(size = 15, weight = "bold"))
+        name_label.grid(row = 0, column = 0)
+        initiative_label = ctk.CTkLabel(self.initiative_frame, text = "Initiative", font = ctk.CTkFont(size = 15, weight = "bold"))
+        initiative_label.grid(row = 0, column = 1, padx = 200)
+
+        if self.combat_round == 1 and not self.isDM and len(self.initiativeList) > 0:
+            cName_label = ctk.CTkLabel(self.initiative_frame, text = self.initiativeList[0].pName)
+            cInitiative_label = ctk.CTkLabel(self.initiative_frame, text = self.initiativeList[0].initiative)
+            cName_label.grid(row = 1, column = 0, pady = 10)
+            cInitiative_label.grid(row = 1, column = 1, pady = 10)
+        else:
+            for i in range(len(self.initiativeList)):
+                if not self.initiativeList[i] == "End":
+                    cName_label = ctk.CTkLabel(self.initiative_frame, text = self.initiativeList[i].pName)
+                    cInitiative_label = ctk.CTkLabel(self.initiative_frame, text = self.initiativeList[i].initiative)
+                    cName_label.grid(row = i + 1, column = 0, pady = 10)
+                    cInitiative_label.grid(row = i + 1, column = 1, pady = 10)
+
+                    if self.isDM:
+                        remove_button = ctk.CTkButton(self.initiative_frame, text= "Remove", command= lambda combatant = self.initiativeList[i]:self.removeCombatant(combatant))
+                        remove_button.grid(row = i + 1, column = 2, padx = 20, pady = 10)
+
+
+    def displayAddCombatant(self, display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, isPlayerCheckBox, add_combatant_button, ac_entry, checkBoxFrame, hasSaveDCCHeckbox):
+        display_combatant_button.pack_forget()
+        checkBoxFrame.pack()
+        combatant_entry_frame.pack(pady = 10)
+        isPlayerCheckBox.grid(row = 0, column = 0, padx = 10)
+        hasSaveDCCHeckbox.grid(row = 0, column = 1, padx = 10)
+        name_entry.grid(row = 0, column = 0, padx = 10)
+        initiative_entry.grid(row = 0, column = 1, padx = 10)
+        dex_entry.grid(row = 0, column = 2, padx = 10)
+        ac_entry.grid(row =0, column = 3, padx = 10)
+        health_entry.grid(row= 0, column = 4, padx = 10)
+        add_combatant_button.pack()
+
+
+    def addCombatant(self, display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, ac_entry, saveDC_entry, isPlayerCheckBox, hasSaveDCCheckBox, add_comabtant_button, checkBoxFrame):
+        health = None
+        SaveDC = None
+        if not health_entry.get() =='':
+            health = int(health_entry.get())
+        if not saveDC_entry.get() == '':
+            SaveDC = int(saveDC_entry.get())
+        name = name_entry.get()
+        initiative = int(initiative_entry.get())
+        dex = int(dex_entry.get())
+        isPlayer = isPlayerCheckBox.get()
+        ac = int(ac_entry.get())
+        
+        
+        initiative_entry.delete(0, ctk.END)
+        dex_entry.delete(0, ctk.END)
+        name_entry.delete(0, ctk.END)
+        health_entry.delete(0, ctk.END)
+        ac_entry.delete(0, ctk.END)
+        saveDC_entry.delete(0, ctk.END)
+        isPlayerCheckBox.deselect()
+        hasSaveDCCheckBox.deselect()
+
+        combatant_entry_frame.pack_forget()
+        checkBoxFrame.pack_forget()
+        add_comabtant_button.pack_forget()
+        saveDC_entry.grid_forget()
+        display_combatant_button.pack()
+
+        self.createCombatant(name, initiative, dex, isPlayer, health, ac, SaveDC, False)
+
+
+    def createCombatant(self, name, initiative, dex, isPlayer, health, ac, saveDC, connected):
+        temp = combatant.combatant(initiative, dex, name, isPlayer, health, ac, saveDC, connected)
+
+        if isPlayer:
+            self.playerList.append(temp)
+
+
+        if len(self.initiativeList)>0:
+            currentTurn = self.initiativeList[0]
+        else:
+            currentTurn = temp
+        self.combatantsList.append(temp)
+
+        self.buildInitiative()
+
+        if self.combat_start:
+            while not self.initiativeList[0] == currentTurn:
+                self.nextInitiative()
+        self.drawInitiative()
+        if not self.combat_start:
+            self.drawInfoFrame()
+
+    def buildInitiative(self):
+        tempCombatantsList = self.combatantsList.copy()
+        self.initiativeList.clear()
+        while len(tempCombatantsList) > 0:
+            nextcombatant = tempCombatantsList[0]
+            for combatant in tempCombatantsList:
+                if combatant.initiative > nextcombatant.initiative:
+                    nextcombatant = combatant
+                elif combatant.initiative == nextcombatant.initiative and combatant.dex > nextcombatant.dex:
+                    nextcombatant = combatant
+                elif combatant.initiative == nextcombatant.initiative and combatant.dex == nextcombatant.dex and combatant.isPlayer:
+                    nextcombatant = combatant
+            self.initiativeList.append(nextcombatant)
+            tempCombatantsList.remove(nextcombatant)
+        self.initiativeList.append("End")
+
+
+
+    def dmScreen(self):
+        clientListen = threading.Thread(target=establishUDPLisener, daemon=True)
+        clientListen.start()
+        #Clear whats currently on the screen
+        for child in self.winfo_children():
+            child.destroy()
+
+        self.isDM = True
+        
+        #Title for the main window
+        title_label = ctk.CTkLabel(self, text = "Combat Tracker", font = ctk.CTkFont(size = 30, weight = "bold"))
+        title_label.pack(padx = 0, pady = 20)
+
+        #Options Buttons
+        button_frame = ctk.CTkFrame(self, 1400, 100)
+        button_frame.pack()
+        next_button = ctk.CTkButton(button_frame, text="Next Initiative")
+        clear_button = ctk.CTkButton(button_frame, text = "Clear Initiative")
+        restart_button = ctk.CTkButton(button_frame, text = "Restart Initiative")
+        combat_start_button = ctk.CTkButton(button_frame, text= "Start Combat")
+        main_frame = ctk.CTkFrame(self, 1920, 800)
+        main_frame.pack()
+        self.initiative_frame = ctk.CTkScrollableFrame(main_frame, 1400, 800)
+
+        next_button.configure(command=self.nextInitiative)
+        restart_button.configure(command= lambda next_button = next_button, clear_button = clear_button, combat_start_button = combat_start_button:self.restartCombat(restart_button, next_button, clear_button, combat_start_button))
+        clear_button.configure(command= lambda next_button = next_button, clear_button = clear_button, combat_start_button = combat_start_button:self.clearInitiative(restart_button, next_button, clear_button, combat_start_button))
+        combat_start_button.configure(command= lambda next_button = next_button, clear_button = clear_button, combat_start_button = combat_start_button:self.startCombat(restart_button, next_button, clear_button, combat_start_button))
+
+        side_frame = ctk.CTkFrame(main_frame, 500, 800)
+        side_frame.grid(row = 0, column = 0)
+        self.info_list_frame = ctk.CTkFrame(side_frame, 500, 400)
+        self.info_list_frame.grid(row = 0, column = 0)
+        pythagorean_frame = ctk.CTkFrame(side_frame, 500, 400)
+        pythagorean_frame.grid(row = 1, column = 0)
+
+        #Scrollale Frame for the initiative order
+        self.initiative_frame.grid(row = 0, column = 1, pady= 10)
+
+        self.drawInitiative()
+
+        isPlayer = ctk.BooleanVar(value=False)
+        hasSaveDC = ctk.BooleanVar(value=False)
+        
+        display_combatant_button = ctk.CTkButton(self, text = "Add Combatant")
+        display_combatant_button.pack(pady = 10)
+
+        checkBoxFrame = ctk.CTkFrame(self, 400, 100)
+        combatant_entry_frame = ctk.CTkFrame(self, 1400, 800)
+        name_entry = ctk.CTkEntry(combatant_entry_frame, 100, 40, placeholder_text="Name...")
+        initiative_entry = ctk.CTkEntry(combatant_entry_frame, 100, 40, placeholder_text="Initiative...")
+        dex_entry = ctk.CTkEntry(combatant_entry_frame, 100, 40, placeholder_text="Dex Mod...")
+        ac_entry = ctk.CTkEntry(combatant_entry_frame, 100, 40, placeholder_text="Armor Class...")
+        health_entry = ctk.CTkEntry(combatant_entry_frame, 100, 40, placeholder_text="Health...")
+        saveDC_entry = ctk.CTkEntry(combatant_entry_frame, 100, 40, placeholder_text="Save DC...")
+        isPlayerCheckBox = ctk.CTkCheckBox(checkBoxFrame, text= "Is Player", variable=isPlayer, onvalue=True, offvalue=False)
+        hasSaveDCCheckBox = ctk.CTkCheckBox(checkBoxFrame, text= "Has Save DC", variable=hasSaveDC, onvalue=True, offvalue=False)
+        add_combatant_button = ctk.CTkButton(self, text="Add Combatant")
+
+        isPlayerCheckBox.configure(command= lambda health_entry = health_entry:self.isPlayerCheckBoxCommand(health_entry, isPlayerCheckBox))
+        hasSaveDCCheckBox.configure(command = lambda saveDC_entry = saveDC_entry:self.hasSaveDCCheckBoxCommand(saveDC_entry, hasSaveDCCheckBox))
+
+        display_combatant_button.configure(command = lambda combatant_entry_frame = combatant_entry_frame, name_entry = name_entry, initiative_entry = initiative_entry, dex_entry = dex_entry, health_entry = health_entry, isPlayerCheckBox = isPlayerCheckBox, 
+                                        add_combatant_button = add_combatant_button, ac_entry = ac_entry, hasSaveDCCheckBox = hasSaveDCCheckBox:self.displayAddCombatant(display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, isPlayerCheckBox, add_combatant_button, ac_entry, checkBoxFrame, hasSaveDCCheckBox))
+        
+        add_combatant_button.configure(command = lambda combatant_entry_frame = combatant_entry_frame, name_entry = name_entry, initiative_entry = initiative_entry, dex_entry = dex_entry, health_entry = health_entry,
+                                        isPlayerCheckBox = isPlayerCheckBox, ac_entry = ac_entry, hasSaveDCCheckBox = hasSaveDCCheckBox:self.addCombatant(display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, ac_entry, saveDC_entry, isPlayerCheckBox,hasSaveDCCheckBox,add_combatant_button, checkBoxFrame))
+
+
+        combat_start_button.grid(row = 0, column = 4)
+
+
+    def playerScreen(self):
         pass
-    tempCombatantsList += initiativeList
-    initiativeList.clear()
-    while len(tempCombatantsList) > 0:
-        nextcombatant = tempCombatantsList[0]
-        for combatant in tempCombatantsList:
-            if combatant.initiative > nextcombatant.initiative:
-                nextcombatant = combatant
-            elif combatant.initiative == nextcombatant.initiative and combatant.dex > nextcombatant.dex:
-                nextcombatant = combatant
-            elif combatant.initiative == nextcombatant.initiative and combatant.dex == nextcombatant.dex and combatant.isPlayer:
-                nextcombatant = combatant
-        initiativeList.append(nextcombatant)
-        tempCombatantsList.remove(nextcombatant)
-    initiativeList.append("End")
+
+    def playerConnect(self, name_entry,initiative_entry, dex_entry, ac_entry, saveDC_entry):
+        name = name_entry.get()
+        initiative = initiative_entry.get()
+        dex = dex_entry.get()
+        ac = ac_entry.get()
+        saveDC = None
+        if not saveDC_entry.get() == "":
+            saveDC = saveDC_entry.get()
+
+        self.player = combatant.combatant(int(initiative), int(dex), name, True, None, int(ac), saveDC, True)
+        message = f"{name}:{initiative}:{dex}:{ac}:{saveDC}"
+        establishUDPSender(message)
 
 
+    def playerStartScreen(self):
+        self.isDM = False
+        #Clear whats currently on the screen
+        for child in self.winfo_children():
+            child.destroy()
 
-def dmScreen():
-    clientListen = threading.Thread(target=establishUDPLisener)
-    clientListen.start()
-    #Clear whats currently on the screen
-    for child in root.winfo_children():
-        child.destroy()
+        hasSaveDC = ctk.BooleanVar(value=False)
 
-    global isDM
-    global info_list_frame
-    global initiative_frame
+        hasSaveDCCheckBox = ctk.CTkCheckBox(self, text= "Has Save DC", variable=hasSaveDC, onvalue=True, offvalue=False)
+        hasSaveDCCheckBox.pack(pady= (500, 0))
 
-    isDM = True
-    
-    #Title for the main window
-    title_label = ctk.CTkLabel(root, text = "Combat Tracker", font = ctk.CTkFont(size = 30, weight = "bold"))
-    title_label.pack(padx = 0, pady = 20)
+        entry_frame = ctk.CTkFrame(self, 600, 100)
+        name_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Name...")
+        initiative_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Initiative...")
+        dex_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Dex Mod...")
+        ac_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Armor Class...")
+        saveDC_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Save DC...")
+        connect_button = ctk.CTkButton(self, 100, 40, text= "Connect", command= lambda name_entry = name_entry:playerConnect(name_entry, initiative_entry, dex_entry, ac_entry, saveDC_entry))
 
-    #Options Buttons
-    button_frame = ctk.CTkFrame(root, 1400, 100)
-    button_frame.pack()
-    next_button = ctk.CTkButton(button_frame, text="Next Initiative")
-    clear_button = ctk.CTkButton(button_frame, text = "Clear Initiative")
-    restart_button = ctk.CTkButton(button_frame, text = "Restart Initiative")
-    combat_start_button = ctk.CTkButton(button_frame, text= "Start Combat")
-    main_frame = ctk.CTkFrame(root, 1920, 800)
-    main_frame.pack()
-    initiative_frame = ctk.CTkScrollableFrame(main_frame, 1400, 800)
+        entry_frame.pack(pady=20)
+        name_entry.grid(padx = 10, row = 0, column = 0)
+        initiative_entry.grid(padx = 10, row = 0, column = 1)
+        dex_entry.grid(padx = 10, row = 0, column = 2)
+        ac_entry.grid(padx = 10, row = 0, column = 3)
+        connect_button.pack()
 
-    next_button.configure(command=nextInitiative)
-    restart_button.configure(command= lambda next_button = next_button, clear_button = clear_button, combat_start_button = combat_start_button:restartCombat(restart_button, next_button, clear_button, combat_start_button))
-    clear_button.configure(command= lambda next_button = next_button, clear_button = clear_button, combat_start_button = combat_start_button:clearInitiative(restart_button, next_button, clear_button, combat_start_button))
-    combat_start_button.configure(command= lambda next_button = next_button, clear_button = clear_button, combat_start_button = combat_start_button:startCombat(restart_button, next_button, clear_button, combat_start_button))
-
-    side_frame = ctk.CTkFrame(main_frame, 500, 800)
-    side_frame.grid(row = 0, column = 0)
-    info_list_frame = ctk.CTkFrame(side_frame, 500, 400)
-    info_list_frame.grid(row = 0, column = 0)
-    pythagorean_frame = ctk.CTkFrame(side_frame, 500, 400)
-    pythagorean_frame.grid(row = 1, column = 0)
-
-    #Scrollale Frame for the initiative order
-    initiative_frame.grid(row = 0, column = 1, pady= 10)
-
-    drawInitiative()
-
-    isPlayer = ctk.BooleanVar(value=False)
-    hasSaveDC = ctk.BooleanVar(value=False)
-    
-    display_combatant_button = ctk.CTkButton(root, text = "Add Combatant")
-    display_combatant_button.pack(pady = 10)
-
-    checkBoxFrame = ctk.CTkFrame(root, 400, 100)
-    combatant_entry_frame = ctk.CTkFrame(root, 1400, 800)
-    name_entry = ctk.CTkEntry(combatant_entry_frame, 100, 40, placeholder_text="Name...")
-    initiative_entry = ctk.CTkEntry(combatant_entry_frame, 100, 40, placeholder_text="Initiative...")
-    dex_entry = ctk.CTkEntry(combatant_entry_frame, 100, 40, placeholder_text="Dex Mod...")
-    ac_entry = ctk.CTkEntry(combatant_entry_frame, 100, 40, placeholder_text="Armor Class...")
-    health_entry = ctk.CTkEntry(combatant_entry_frame, 100, 40, placeholder_text="Health...")
-    saveDC_entry = ctk.CTkEntry(combatant_entry_frame, 100, 40, placeholder_text="Save DC...")
-    isPlayerCheckBox = ctk.CTkCheckBox(checkBoxFrame, text= "Is Player", variable=isPlayer, onvalue=True, offvalue=False)
-    hasSaveDCCheckBox = ctk.CTkCheckBox(checkBoxFrame, text= "Has Save DC", variable=hasSaveDC, onvalue=True, offvalue=False)
-    add_combatant_button = ctk.CTkButton(root, text="Add Combatant")
-
-    isPlayerCheckBox.configure(command= lambda health_entry = health_entry:isPlayerCheckBoxCommand(health_entry, isPlayerCheckBox))
-    hasSaveDCCheckBox.configure(command = lambda saveDC_entry = saveDC_entry:hasSaveDCCheckBoxCommand(saveDC_entry, hasSaveDCCheckBox))
-
-    display_combatant_button.configure(command = lambda combatant_entry_frame = combatant_entry_frame, name_entry = name_entry, initiative_entry = initiative_entry, dex_entry = dex_entry, health_entry = health_entry, isPlayerCheckBox = isPlayerCheckBox, 
-                                       add_combatant_button = add_combatant_button, ac_entry = ac_entry, saveDC_entry = saveDC_entry, hasSaveDCCheckBox = hasSaveDCCheckBox:displayAddCombatant(display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, isPlayerCheckBox, add_combatant_button, ac_entry, checkBoxFrame, hasSaveDCCheckBox))
-    
-    add_combatant_button.configure(command = lambda combatant_entry_frame = combatant_entry_frame, name_entry = name_entry, initiative_entry = initiative_entry, dex_entry = dex_entry, health_entry = health_entry,
-                                    isPlayerCheckBox = isPlayerCheckBox, ac_entry = ac_entry, hassaveDCCheckBox = hasSaveDCCheckBox:addCombatant(display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, ac_entry, saveDC_entry, isPlayerCheckBox,hasSaveDCCheckBox,add_combatant_button, checkBoxFrame))
+        hasSaveDCCheckBox.configure(command = lambda saveDC_entry = saveDC_entry:self.hasSaveDCCheckBoxCommand(saveDC_entry, hasSaveDCCheckBox))
 
 
-    combat_start_button.grid(row = 0, column = 4)
+    def askInitiative(self):
+        self.player
+        dialog = ctk.CTkInputDialog(text= "What did you get for Initiative")
+        newInitiative = int(dialog.get_input())
+        message = f"addCombatant/{player.pName}:{newInitiative}:{player.dex}:{player.ac}:{player.saveDC}"
+        establishTCPSender(connections["DM"][0], message)
 
 
-def playerScreen():
-    pass
+    def startScreen(self):
+        for child in self.winfo_children():
+            child.destroy()
 
-def playerConnect(name_entry,initiative_entry, dex_entry, ac_entry, saveDC_entry):
-    global player
-    name = name_entry.get()
-    initiative = initiative_entry.get()
-    dex = dex_entry.get()
-    ac = ac_entry.get()
-    saveDC = None
-    if not saveDC_entry.get() == "":
-        saveDC = saveDC_entry.get()
-
-    player = combatant.combatant(int(initiative), int(dex), name, True, None, int(ac), saveDC, True)
-    message = f"{name}:{initiative}:{dex}:{ac}:{saveDC}"
-    establishUDPSender(message)
+        
+        button_frame = ctk.CTkFrame(self)
+        dm_button = ctk.CTkButton(button_frame, 100, 40, text= "DM", command=self.dmScreen)
+        player_button = ctk.CTkButton(button_frame, 100, 40, text= "Player", command=self.playerStartScreen)
+        button_frame.pack(pady = 500)
+        dm_button.grid(row = 0, column = 0, padx = 20)
+        player_button.grid(row = 0, column = 1, padx = 20)
 
 
-def playerStartScreen():
-    global isDM 
-    isDM = False
-    #Clear whats currently on the screen
-    for child in root.winfo_children():
-        child.destroy()
-
-    hasSaveDC = ctk.BooleanVar(value=False)
-
-    hasSaveDCCheckBox = ctk.CTkCheckBox(root, text= "Has Save DC", variable=hasSaveDC, onvalue=True, offvalue=False)
-    hasSaveDCCheckBox.pack(pady= (500, 0))
-
-    entry_frame = ctk.CTkFrame(root, 600, 100)
-    name_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Name...")
-    initiative_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Initiative...")
-    dex_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Dex Mod...")
-    ac_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Armor Class...")
-    saveDC_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Save DC...")
-    connect_button = ctk.CTkButton(root, 100, 40, text= "Connect", command= lambda name_entry = name_entry:playerConnect(name_entry, initiative_entry, dex_entry, ac_entry, saveDC_entry))
-
-    entry_frame.pack(pady=20)
-    name_entry.grid(padx = 10, row = 0, column = 0)
-    initiative_entry.grid(padx = 10, row = 0, column = 1)
-    dex_entry.grid(padx = 10, row = 0, column = 2)
-    ac_entry.grid(padx = 10, row = 0, column = 3)
-    connect_button.pack()
-
-    hasSaveDCCheckBox.configure(command = lambda saveDC_entry = saveDC_entry:hasSaveDCCheckBoxCommand(saveDC_entry, hasSaveDCCheckBox))
-
-
-def askInitiative():
-    global player
-    dialog = ctk.CTkInputDialog(text= "What did you get for Initiative")
-    newInitiative = int(dialog.get_input())
-    message = f"addCombatant/{player.pName}:{newInitiative}:{player.dex}:{player.ac}:{player.saveDC}"
-    establishTCPSender(connections["DM"][0], message)
-
-
-def startScreen():
-    for child in root.winfo_children():
-        child.destroy()
-
-    
-    button_frame = ctk.CTkFrame(root)
-    dm_button = ctk.CTkButton(button_frame, 100, 40, text= "DM", command=dmScreen)
-    player_button = ctk.CTkButton(button_frame, 100, 40, text= "Player", command=playerStartScreen)
-    button_frame.pack(pady = 500)
-    dm_button.grid(row = 0, column = 0, padx = 20)
-    player_button.grid(row = 0, column = 1, padx = 20)
-
-
-tcpListener = threading.Thread(target=establishTCPListener)
+tcpListener = threading.Thread(target=establishTCPListener, daemon=True)
 tcpListener.start()
 
-startScreen()
-root.mainloop()
+main_window = MainWindow()
+
+main_window.startScreen()
+main_window.mainloop()
 
 closeAll()
