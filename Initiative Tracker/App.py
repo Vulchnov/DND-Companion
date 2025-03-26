@@ -611,7 +611,7 @@ def askInitiative():
     dialog = ctk.CTkInputDialog(text= "What did you get for Initiative")
     newInitiative = int(dialog.get_input())
     message = f"updateInitiative:{name}:{newInitiative}"
-    establishTCPSender(connections["DM"][1], message)
+    establishTCPSender(connections["DM"][0], message)
 
 
 def startScreen():
