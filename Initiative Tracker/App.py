@@ -258,7 +258,7 @@ class MainWindow(ctk.CTk):
 
             case TicketPurpose.UPDATE_INITIATIVE:
                 info = msg.ticket_value.split(":")
-                self.updateInitiative(self.connections[info[0]][1], info[1])
+                self.updateInitiative(self.connections[info[0]][1], int(info[1]))
 
 
             case TicketPurpose.START_COMBAT:
