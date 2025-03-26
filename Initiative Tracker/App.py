@@ -610,7 +610,7 @@ def askInitiative():
     global name
     dialog = ctk.CTkInputDialog(text= "What did you get for Initiative")
     newInitiative = int(dialog.get_input())
-    message = f"updateInitiative:{name}:{newInitiative}"
+    message = f"updateInitiative/{name}:{newInitiative}"
     establishTCPSender(connections["DM"][0], message)
 
 
