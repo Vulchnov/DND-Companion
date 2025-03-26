@@ -5,210 +5,24 @@ from queue import Queue
 from enum import Enum, auto
 
 
-class ticketPurpose(Enum):
+class TicketPurpose(Enum):
+    PLAYER_CONNECT = auto()
     ADD_COMBATANT = auto()
+    ASK_INITIATIVE = auto()
+    START_COMBAT = auto()
+    UPDATE_INITIATIVE = auto()
 
 
-class ticket():
-    pass
+class Ticket():
+    def __init__(self, ticket_type: TicketPurpose, ticket_value: str):
+        self.ticket_type = ticket_type
+        self.ticket_value = ticket_value
 
 
 
 #socket imports
 import socket
 import select
-
-#Socket Globals
-connections = {}
-sockets = []
-isConnected = False
-player = None
-
-
-def establishUDPLisener():
-    global sockets
-    # Create UDP socket
-    BROADCAST_PORT = 5005
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-
-    # Bind to all network interfaces on the chosen port
-    server_socket.bind(('', BROADCAST_PORT))
-
-    print("Server listening for broadcasts...")
-
-    sockets.append(server_socket)
-    while True:
-        try:
-            data, addr = server_socket.recvfrom(2048)  # Receive data
-            data = data.decode()
-            info = data.split(":")
-            print(f"Received broadcast from {addr}: {info[0]}")
-
-            # Send response directly to sender
-            response = f"Server IP: {socket.gethostbyname(socket.gethostname())}"
-            server_socket.sendto(response.encode(), addr)
-
-            saveDC = None
-            if not info[4] == "None":
-                saveDC = int(info[4])
-            
-            createCombatant(info[0], int(info[1]), int(info[2]), True, None, int(info[3]), saveDC, True)
-            temp = None
-            print(info[0])
-            for combatant in playerList:
-                if combatant.pName == info[0]:
-                    temp = combatant
-            connections[info[0]] = (addr[0], temp)
-        except:
-            break
-
-def establishUDPSender(message):
-    BROADCAST_PORT = 5005
-
-    # Step 1: Get the local hostname.
-    local_hostname = socket.gethostname()
-
-    # Step 2: Get a list of IP addresses associated with the hostname.
-    ip_addresses = socket.gethostbyname_ex(local_hostname)[2]
-
-    # Step 3: Filter out loopback addresses (IPs starting with "127.").
-    filtered_ips = [ip for ip in ip_addresses if not ip.startswith("127.")]
-
-    for ip in filtered_ips:
-        ipSplit = ip.split(".")
-        ipSplit[3] = "255"
-        BROADCAST_IP = ".".join(ipSplit)  # Broadcast address for local network
-
-        # Create UDP socket
-        client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-
-        client_socket.sendto(message.encode(), (BROADCAST_IP, BROADCAST_PORT))
-        print("Broadcast message sent.")
-
-        # Listen for response
-        client_socket.settimeout(3)  # Wait for a response for up to 3 seconds
-        try:
-            response, server_addr = client_socket.recvfrom(2048)
-            print(f"Received response from {server_addr}: {response.decode()}")
-            connections["DM"] = (server_addr[0], None)
-            global isConnected
-            isConnected = True
-            client_socket.close()
-        except socket.timeout:
-            print("No response received.")
-
-def establishTCPListener():
-    global sockets
-    SERVER_HOST = '0.0.0.0'  # Listen on all available interfaces
-    SERVER_PORT = 5006
-
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    server_socket.setblocking(False)
-    server_socket.bind(('', SERVER_PORT))
-    server_socket.listen(10)
-
-    sockets.append(server_socket)
-    print(f"Server listening on {SERVER_HOST}:{SERVER_PORT}")
-    clients = [server_socket]
-
-    while True:
-        try:
-            readable, writable, errored = select.select(clients, [], [], 0.1)
-            for s in readable:
-                if s is server_socket:
-                    client_socket, client_address = server_socket.accept()
-                    print(f"Accepted connection from {client_address[0]}:{client_address[1]}")
-                    clients.append(client_socket)
-                else:
-                    data = client_socket.recv(2048).decode()
-                    if not data:
-                        clients.remove(s)
-                        s.close
-                        continue
-                    print(f"Received: {data}")
-                    parseMessage(data)
-
-        except socket.error:
-            break
-
-def establishTCPSender(addr, message):
-    SERVER_HOST = addr  # Replace with the actual IP address of the server
-
-    SERVER_PORT = 5006
-
-    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-    try:
-        client_socket.connect((SERVER_HOST, SERVER_PORT))
-        print(f"Connected to {SERVER_HOST}:{SERVER_PORT}")
-
-        client_socket.send(message.encode())
-
-    except socket.error as e:
-        print(f"Connection error: {e}")
-
-    finally:
-        client_socket.close()
-
-
-def closeAll():
-    global sockets
-    for i in range(len(sockets)):
-        socketObj = sockets.pop(0)
-        socketObj.close()
-
-
-def parseMessage(message):
-    messageSplit = message.split("/")
-    cmd = messageSplit[0]
-    match cmd:
-        case "addCombatant":
-            info = messageSplit[1].split(":")
-            saveDC = None
-            if not info[4] == "None":
-                saveDC = int(info[4])
-            createCombatant(info[0], int(info[1]), int(info[2]), True, None, info[3], saveDC, True)
-
-        case "askInitiative":
-            askInitiative()
-
-        case "updateInitiative":
-            info = messageSplit[1].split(":")
-            updateInitiative(connections[info[0]][1], info[1])
-
-        case "startCombat":
-            startCombat()
-
-        case _:
-            pass
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 class MainWindow(ctk.CTk):
     def __init__(self):
@@ -223,10 +37,237 @@ class MainWindow(ctk.CTk):
         self.combat_start = False
         self.isDM = False
 
+        
+        #Socket Information
+        self.connections = {}
+        self.sockets = []
+        self.isConnected = False
+        self.player = None
+        self.message_queue = Queue()
+
+        self.bind("<<CheckQueue>>", self.checkQueue)
+
+
         #Main Window
         self.geometry("1920x1080")
         self.title("DnD Companion")
 
+
+
+
+    def establishUDPLisener(self):
+        # Create UDP socket
+        BROADCAST_PORT = 5005
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+        server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+        # Bind to all network interfaces on the chosen port
+        server_socket.bind(('', BROADCAST_PORT))
+
+        print("Server listening for broadcasts...")
+
+        self.sockets.append(server_socket)
+        while True:
+            try:
+                data, addr = server_socket.recvfrom(2048)  # Receive data
+                data = data.decode()
+                info = data.split(":")
+                print(f"Received broadcast from {addr}: {info[0]}")
+
+                # Send response directly to sender
+                response = f"Server IP: {socket.gethostbyname(socket.gethostname())}"
+                server_socket.sendto(response.encode(), addr)
+
+                ticket = Ticket(TicketPurpose.PLAYER_CONNECT, ticket_value=f"{data}:{addr[0]}")
+                self.message_queue.put(ticket)
+                self.event_generate("<<CheckQueue>>")
+
+            except:
+                break
+
+    def establishUDPSender(self, message):
+        BROADCAST_PORT = 5005
+
+        # Step 1: Get the local hostname.
+        local_hostname = socket.gethostname()
+
+        # Step 2: Get a list of IP addresses associated with the hostname.
+        ip_addresses = socket.gethostbyname_ex(local_hostname)[2]
+
+        # Step 3: Filter out loopback addresses (IPs starting with "127.").
+        filtered_ips = [ip for ip in ip_addresses if not ip.startswith("127.")]
+
+        for ip in filtered_ips:
+            ipSplit = ip.split(".")
+            ipSplit[3] = "255"
+            BROADCAST_IP = ".".join(ipSplit)  # Broadcast address for local network
+
+            # Create UDP socket
+            client_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            client_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+
+            client_socket.sendto(message.encode(), (BROADCAST_IP, BROADCAST_PORT))
+            print("Broadcast message sent.")
+
+            # Listen for response
+            client_socket.settimeout(3)  # Wait for a response for up to 3 seconds
+            try:
+                response, server_addr = client_socket.recvfrom(2048)
+                print(f"Received response from {server_addr}: {response.decode()}")
+                self.connections["DM"] = (server_addr[0], None)
+                self.isConnected = True
+                client_socket.close()
+            except socket.timeout:
+                print("No response received.")
+
+    def establishTCPListener(self):
+        global sockets
+        SERVER_HOST = '0.0.0.0'  # Listen on all available interfaces
+        SERVER_PORT = 5006
+
+        server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        server_socket.setblocking(False)
+        server_socket.bind(('', SERVER_PORT))
+        server_socket.listen(10)
+
+        self.sockets.append(server_socket)
+        print(f"Server listening on {SERVER_HOST}:{SERVER_PORT}")
+        clients = [server_socket]
+
+        while True:
+            try:
+                readable, writable, errored = select.select(clients, [], [], 0.1)
+                for s in readable:
+                    if s is server_socket:
+                        client_socket, client_address = server_socket.accept()
+                        print(f"Accepted connection from {client_address[0]}:{client_address[1]}")
+                        clients.append(client_socket)
+                    else:
+                        data = client_socket.recv(2048).decode()
+                        if not data:
+                            clients.remove(s)
+                            s.close
+                            continue
+                        print(f"Received: {data}")
+                        self.parseMessage(data)
+
+            except socket.error:
+                break
+
+    def establishTCPSender(self, addr, message):
+        SERVER_HOST = addr  # Replace with the actual IP address of the server
+
+        SERVER_PORT = 5006
+
+        client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+        try:
+            client_socket.connect((SERVER_HOST, SERVER_PORT))
+            print(f"Connected to {SERVER_HOST}:{SERVER_PORT}")
+
+            client_socket.send(message.encode())
+
+        except socket.error as e:
+            print(f"Connection error: {e}")
+
+        finally:
+            client_socket.close()
+
+
+    def closeAll(self):
+        global sockets
+        for i in range(len(sockets)):
+            socketObj = sockets.pop(0)
+            socketObj.close()
+
+
+    def parseMessage(self, message):
+        messageSplit = message.split("/")
+        cmd = messageSplit[0]
+        match cmd:
+            case "addCombatant":
+                ticket = Ticket(TicketPurpose.ADD_COMBATANT, messageSplit[1])
+                self.message_queue.put(ticket)
+                self.event_generate("<<CheckQueue>>")
+
+            case "askInitiative":
+                ticket = Ticket(TicketPurpose.ASK_INITIATIVE, "")
+                self.message_queue.put(ticket)
+                self.event_generate("<<CheckQueue>>")
+
+            case "updateInitiative":
+                ticket = Ticket(TicketPurpose.UPDATE_INITIATIVE, messageSplit[1])
+                self.message_queue.put(ticket)
+                self.event_generate("<<CheckQueue>>")
+
+            case "startCombat":
+                ticket = Ticket(TicketPurpose.START_COMBAT, "")
+                self.message_queue.put(ticket)
+                self.event_generate("<<CheckQueue>>")
+
+            case _:
+                pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    def checkQueue(self, event):
+        msg: Ticket
+        msg = self.message_queue.get()
+        match msg.ticket_type:
+            case TicketPurpose.PLAYER_CONNECT:
+                info = msg.ticket_value.split(":")
+                initiative = int(info[1])
+                dex = int(info[2])
+                ac = int(info[3])
+                saveDC = None
+                if not info[4] =="None":
+                    saveDC= int(info[4])
+                self.createCombatant(info[0], initiative, dex, True, None, ac, saveDC, True)
+
+                for combatant in self.playerList:
+                    if combatant.pName == info[0]:
+                        temp = combatant
+                self.connections[info[0]] = (info[5], temp)
+
+
+            case TicketPurpose.ADD_COMBATANT:
+                info = msg.ticket_value.split(":")
+                saveDC = None
+                if not info[4] == "None":
+                    saveDC = int(info[4])
+                self.createCombatant(info[0], int(info[1]), int(info[2]), True, None, info[3], saveDC, True)
+
+
+            case TicketPurpose.ASK_INITIATIVE:
+                self.askInitiative()
+
+
+            case TicketPurpose.UPDATE_INITIATIVE:
+                info = msg.ticket_value.split(":")
+                self.updateInitiative(self.connections[info[0]][1], info[1])
+
+
+            case TicketPurpose.START_COMBAT:
+                pass
+
+
+            case _:
+                pass
+        
 
     def nextInitiative(self):
         if self.initiativeList[1] == "End":
@@ -248,7 +289,7 @@ class MainWindow(ctk.CTk):
                 newInitiative = int(dialog.get_input())
                 player.setInitiative(newInitiative)
             else:
-                establishTCPSender(connections[player.pName][0], "askInitiative")
+                self.establishTCPSender(self.connections[player.pName][0], "askInitiative")
 
         self.combatantsList = self.playerList.copy()
         self.initiativeList.clear()
@@ -463,7 +504,7 @@ class MainWindow(ctk.CTk):
 
 
     def dmScreen(self):
-        clientListen = threading.Thread(target=establishUDPLisener, daemon=True)
+        clientListen = threading.Thread(target=self.establishUDPLisener, daemon=True)
         clientListen.start()
         #Clear whats currently on the screen
         for child in self.winfo_children():
@@ -548,11 +589,12 @@ class MainWindow(ctk.CTk):
 
         self.player = combatant.combatant(int(initiative), int(dex), name, True, None, int(ac), saveDC, True)
         message = f"{name}:{initiative}:{dex}:{ac}:{saveDC}"
-        establishUDPSender(message)
+        self.establishUDPSender(message)
 
 
     def playerStartScreen(self):
         self.isDM = False
+        
         #Clear whats currently on the screen
         for child in self.winfo_children():
             child.destroy()
@@ -568,7 +610,7 @@ class MainWindow(ctk.CTk):
         dex_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Dex Mod...")
         ac_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Armor Class...")
         saveDC_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Save DC...")
-        connect_button = ctk.CTkButton(self, 100, 40, text= "Connect", command= lambda name_entry = name_entry:playerConnect(name_entry, initiative_entry, dex_entry, ac_entry, saveDC_entry))
+        connect_button = ctk.CTkButton(self, 100, 40, text= "Connect", command= lambda name_entry = name_entry:self.playerConnect(name_entry, initiative_entry, dex_entry, ac_entry, saveDC_entry))
 
         entry_frame.pack(pady=20)
         name_entry.grid(padx = 10, row = 0, column = 0)
@@ -581,17 +623,18 @@ class MainWindow(ctk.CTk):
 
 
     def askInitiative(self):
-        self.player
         dialog = ctk.CTkInputDialog(text= "What did you get for Initiative")
         newInitiative = int(dialog.get_input())
-        message = f"addCombatant/{player.pName}:{newInitiative}:{player.dex}:{player.ac}:{player.saveDC}"
-        establishTCPSender(connections["DM"][0], message)
+        message = f"updateInitiative/{self.player.pName}:{newInitiative}"
+        self.establishTCPSender(self.connections["DM"][0], message)
 
 
     def startScreen(self):
         for child in self.winfo_children():
             child.destroy()
 
+        tcpListener = threading.Thread(target=self.establishTCPListener, daemon=True)
+        tcpListener.start()
         
         button_frame = ctk.CTkFrame(self)
         dm_button = ctk.CTkButton(button_frame, 100, 40, text= "DM", command=self.dmScreen)
@@ -600,13 +643,7 @@ class MainWindow(ctk.CTk):
         dm_button.grid(row = 0, column = 0, padx = 20)
         player_button.grid(row = 0, column = 1, padx = 20)
 
-
-tcpListener = threading.Thread(target=establishTCPListener, daemon=True)
-tcpListener.start()
-
 main_window = MainWindow()
 
 main_window.startScreen()
 main_window.mainloop()
-
-closeAll()
