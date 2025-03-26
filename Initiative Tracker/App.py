@@ -156,7 +156,7 @@ def parseMessage(message):
     match cmd:
         case "addCombatant":
             info = messageSplit[1].split(":")
-            createCombatant(info[1], info[2], info[3], True, None, info[4], info[5], True)
+            createCombatant(info[0], info[1], info[2], True, None, info[3], info[4], True)
 
         case "askInitiative":
             askInitiative()
