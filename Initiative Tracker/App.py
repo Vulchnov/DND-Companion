@@ -156,7 +156,10 @@ def parseMessage(message):
     match cmd:
         case "addCombatant":
             info = messageSplit[1].split(":")
-            createCombatant(info[0], info[1], info[2], True, None, info[3], info[4], True)
+            saveDC = None
+            if not info[4] == "None":
+                saveDC = int(info[4])
+            createCombatant(info[0], int(info[1]), int(info[2]), True, None, info[3], saveDC, True)
 
         case "askInitiative":
             askInitiative()
@@ -241,7 +244,6 @@ def restartCombat(restart_button, next_button, clear_button, combat_start_button
             newInitiative = int(dialog.get_input())
             player.setInitiative(newInitiative)
         else:
-            playerList.remove(player)
             establishTCPSender(connections[player.pName][0], "askInitiative")
 
     tempCombatantsList = playerList
