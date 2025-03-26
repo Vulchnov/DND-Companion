@@ -614,7 +614,7 @@ def askInitiative():
     global player
     dialog = ctk.CTkInputDialog(text= "What did you get for Initiative")
     newInitiative = int(dialog.get_input())
-    message = f"updateInitiative/{player.pName}:{newInitiative}"
+    message = f"addCombatant/{player.pName}:{newInitiative}:{player.dex}:{player.ac}:{player.saveDC}"
     establishTCPSender(connections["DM"][0], message)
 
 
