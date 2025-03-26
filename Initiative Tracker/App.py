@@ -32,17 +32,17 @@ def establishUDPLisener():
             data, addr = server_socket.recvfrom(2048)  # Receive data
             data = data.decode()
             info = data.split(":")
-            print(f"Received broadcast from {addr}: {info[1]}")
+            print(f"Received broadcast from {addr}: {info[0]}")
 
             # Send response directly to sender
             response = f"Server IP: {socket.gethostbyname(socket.gethostname())}"
             server_socket.sendto(response.encode(), addr)
 
             saveDC = None
-            if not info[3] == "None":
-                saveDC = int(info[3])
+            if not info[4] == "None":
+                saveDC = int(info[4])
             
-            createCombatant(info[0], 0, int(info[1]), True, None, int(info[2]), saveDC, True)
+            createCombatant(info[0], int(info[1]), int(info[2]), True, None, int(info[3]), saveDC, True)
             temp = None
             print(info[0])
             for combatant in playerList:
@@ -566,16 +566,17 @@ def dmScreen():
 def playerScreen():
     pass
 
-def playerConnect(name_entry, dex_entry, ac_entry, saveDC_entry):
+def playerConnect(name_entry,initiative_entry, dex_entry, ac_entry, saveDC_entry):
     global name
     name = name_entry.get()
+    initiative = initiative_entry.get()
     dex = dex_entry.get()
     ac = ac_entry.get()
     saveDC = None
     if not saveDC_entry.get() == "":
         saveDC = saveDC_entry.get()
 
-    message = f"{name}:{dex}:{ac}:{saveDC}"
+    message = f"{name}:{initiative}:{dex}:{ac}:{saveDC}"
     establishUDPSender(message)
 
 
@@ -593,15 +594,17 @@ def playerStartScreen():
 
     entry_frame = ctk.CTkFrame(root, 600, 100)
     name_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Name...")
+    initiative_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Initiative...")
     dex_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Dex Mod...")
     ac_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Armor Class...")
     saveDC_entry = ctk.CTkEntry(entry_frame, 100, 40, placeholder_text="Save DC...")
-    connect_button = ctk.CTkButton(root, 100, 40, text= "Connect", command= lambda name_entry = name_entry:playerConnect(name_entry, dex_entry, ac_entry, saveDC_entry))
+    connect_button = ctk.CTkButton(root, 100, 40, text= "Connect", command= lambda name_entry = name_entry:playerConnect(name_entry, initiative_entry, dex_entry, ac_entry, saveDC_entry))
 
     entry_frame.pack(pady=20)
     name_entry.grid(padx = 10, row = 0, column = 0)
-    dex_entry.grid(padx = 10, row = 0, column = 1)
-    ac_entry.grid(padx = 10, row = 0, column = 2)
+    initiative_entry.grid(padx = 10, row = 0, column = 1)
+    dex_entry.grid(padx = 10, row = 0, column = 2)
+    ac_entry.grid(padx = 10, row = 0, column = 3)
     connect_button.pack()
 
     hasSaveDCCheckBox.configure(command = lambda saveDC_entry = saveDC_entry:hasSaveDCCheckBoxCommand(saveDC_entry, hasSaveDCCheckBox))
