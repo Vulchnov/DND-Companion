@@ -163,6 +163,7 @@ def parseMessage(message):
 
         case "updateInitiative":
             info = messageSplit[1].split(":")
+            updateInitiative(connections[info[0]][1], info[1])
 
         case "startCombat":
             startCombat()
