@@ -575,7 +575,7 @@ def playerConnect(name_entry,initiative_entry, dex_entry, ac_entry, saveDC_entry
     if not saveDC_entry.get() == "":
         saveDC = saveDC_entry.get()
 
-    player = combatant.combatant(int(initiative), int(dex), name, True, None, int(ac), int(saveDC))
+    player = combatant.combatant(int(initiative), int(dex), name, True, None, int(ac), saveDC, True)
     message = f"{name}:{initiative}:{dex}:{ac}:{saveDC}"
     establishUDPSender(message)
 
