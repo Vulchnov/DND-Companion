@@ -44,10 +44,11 @@ def establishUDPLisener():
             
             createCombatant(info[0], 0, int(info[1]), True, None, int(info[2]), saveDC, True)
             temp = None
+            print(info[0])
             for combatant in playerList:
                 if combatant.pName == info[0]:
                     temp = combatant
-            connections[info[2]] = (addr, temp)
+            connections[info[0]] = (addr[0], temp)
         except:
             break
 
@@ -239,7 +240,7 @@ def restartCombat(restart_button, next_button, clear_button, combat_start_button
             newInitiative = int(dialog.get_input())
             player.setInitiative(newInitiative)
         else:
-            establishTCPSender(connections[player.pName], "askInitiative")
+            establishTCPSender(connections[player.pName][0], "askInitiative")
 
     tempCombatantsList = playerList
     combatantsList = playerList
