@@ -10,6 +10,8 @@ import select
 #Socket Globals
 connections = {}
 sockets = []
+isConnected = False
+name = None
 
 
 def establishUDPLisener():
@@ -79,12 +81,12 @@ def establishUDPSender(message):
         try:
             response, server_addr = client_socket.recvfrom(2048)
             print(f"Received response from {server_addr}: {response.decode()}")
-            connections["DM"] = server_addr[0]
-            establishTCPSender(server_addr[0], "Hello")
+            connections["DM"] = (server_addr[0], None)
+            global isConnected
+            isConnected = True
+            client_socket.close()
         except socket.timeout:
             print("No response received.")
-
-
 
 def establishTCPListener():
     global sockets
@@ -155,11 +157,15 @@ def parseMessage(message):
             info = messageSplit[1].split(":")
             createCombatant(info[1], info[2], info[3], True, None, info[4], info[5], True)
 
+        case "askInitiative":
+            askInitiative()
+
         case "updateInitiative":
             info = messageSplit[1].split(":")
 
         case "startCombat":
             startCombat()
+
         case _:
             pass
     
@@ -199,7 +205,6 @@ initiative_frame = None
 combat_round = 1
 combat_start = False
 isDM = False
-player = None
 
 #Main Window
 root = ctk.CTk()
@@ -229,9 +234,12 @@ def restartCombat(restart_button, next_button, clear_button, combat_start_button
     clear_button.grid_forget()
     restart_button.grid_forget()
     for player in playerList:
-        dialog = ctk.CTkInputDialog(text= "New initiative for " + player.pName)
-        newInitiative = int(dialog.get_input())
-        player.setInitiative(newInitiative)
+        if not player.connected:
+            dialog = ctk.CTkInputDialog(text= "New initiative for " + player.pName)
+            newInitiative = int(dialog.get_input())
+            player.setInitiative(newInitiative)
+        else:
+            establishTCPSender(connections[player.pName], "askInitiative")
 
     tempCombatantsList = playerList
     combatantsList = playerList
@@ -239,6 +247,10 @@ def restartCombat(restart_button, next_button, clear_button, combat_start_button
     buildInitiative()
     drawInitiative()
 
+def updateInitiative(player, initiative):
+    player.setInitiative(initiative)
+    buildInitiative()
+    drawInitiative()
 
 def clearInitiative(restart_button, next_button, clear_button, combat_start_button):
     global initiativeList
@@ -553,6 +565,7 @@ def playerScreen():
     pass
 
 def playerConnect(name_entry, dex_entry, ac_entry, saveDC_entry):
+    global name
     name = name_entry.get()
     dex = dex_entry.get()
     ac = ac_entry.get()
@@ -591,6 +604,13 @@ def playerStartScreen():
 
     hasSaveDCCheckBox.configure(command = lambda saveDC_entry = saveDC_entry:hasSaveDCCheckBoxCommand(saveDC_entry, hasSaveDCCheckBox))
 
+
+def askInitiative():
+    global name
+    dialog = ctk.CTkInputDialog(text= "What did you get for Initiative")
+    newInitiative = int(dialog.get_input())
+    message = f"updateInitiative:{name}:{newInitiative}"
+    establishTCPSender(connections["DM"][1], message)
 
 
 def startScreen():
