@@ -3,6 +3,7 @@ import combatant
 import threading
 from queue import Queue
 from enum import Enum, auto
+from math import sqrt
 
 
 class TicketPurpose(Enum):
@@ -33,6 +34,7 @@ class MainWindow(ctk.CTk):
         self.playerList = []
         self.info_list_frame = None
         self.initiative_frame = None
+        self.pythagorean_frame = None
         self.combat_round = 1
         self.combat_start = False
         self.isDM = False
@@ -338,7 +340,9 @@ class MainWindow(ctk.CTk):
             self.playerList.remove(combatant)
         self.drawInitiative()
 
-
+    def swapInitiative(self, combatant1, combatant2):
+        combatant1.Initiative, combatant2.Initiative = combatant2.Initiative, combatant1.Initiative
+    
     def healCombatant(self, combatant, entry):
         combatant.health += int(entry.get())
         self.drawInfoFrame()
@@ -349,18 +353,39 @@ class MainWindow(ctk.CTk):
         self.drawInfoFrame()
 
 
+    def pythagoreanTheorum(self, x_entry, y_entry):
+        x = int(x_entry.get())
+        y = int(y_entry.get())
+        hypotenuse = sqrt((x*x) + (y*y))
+        self.drawPythagoreanFrame(hypotenuse)
+
+    def drawPythagoreanFrame(self, hypotenuse):
+        for child in self.pythagorean_frame.winfo_children():
+            child.destroy()
+        entry_frame = ctk.CTkFrame(self.pythagorean_frame)
+        entry_frame.pack()
+        x_entry = ctk.CTkEntry(entry_frame, placeholder_text="X")
+        y_entry = ctk.CTkEntry(entry_frame, placeholder_text="Y")
+        x_entry.grid(row = 0, column = 0, padx = 10)
+        y_entry.grid(row = 0, column = 1, padx = 10)
+        pythagorean_button = ctk.CTkButton(self.pythagorean_frame, text="Calculate Hypotenuse", command= lambda x_entry = x_entry, y_entry = y_entry: self.pythagoreanTheorum(x_entry, y_entry))
+        pythagorean_button.pack()
+
+        answer_label = ctk.CTkLabel(self.pythagorean_frame, text=hypotenuse)
+        answer_label.pack()
+
     def drawInfoFrame(self):
         for child in self.info_list_frame.winfo_children():
             child.destroy()
 
         name_label = ctk.CTkLabel(self.info_list_frame, text="Name", font = ctk.CTkFont(size=15, weight="bold"))
-        name_label.grid(row = 0, column = 0)
+        name_label.grid(row = 0, column = 0, padx = 50)
         AC_label = ctk.CTkLabel(self.info_list_frame, text="AC", font = ctk.CTkFont(size=15, weight="bold"))
-        AC_label.grid(row = 0, column = 1, padx = 20)
+        AC_label.grid(row = 0, column = 1, padx = 50)
         DC_label = ctk.CTkLabel(self.info_list_frame, text="Save DC", font = ctk.CTkFont(size=15, weight="bold"))
-        DC_label.grid(row = 0, column = 2, padx = 20)
+        DC_label.grid(row = 0, column = 2, padx = 50)
         health_label = ctk.CTkLabel(self.info_list_frame, text="Health", font = ctk.CTkFont(size=15, weight="bold"))
-        health_label.grid(row = 0, column = 3)
+        health_label.grid(row = 0, column = 3, padx = 50)
         
         if self.isDM:
             for i in range(len(self.combatantsList)):
@@ -391,13 +416,12 @@ class MainWindow(ctk.CTk):
         for child in self.initiative_frame.winfo_children():
             child.destroy()
 
-        self.drawInfoFrame()
 
         #Inside Frame
         name_label = ctk.CTkLabel(self.initiative_frame, text = "Name", font = ctk.CTkFont(size = 15, weight = "bold"))
-        name_label.grid(row = 0, column = 0)
+        name_label.grid(row = 0, column = 0, padx = 100)
         initiative_label = ctk.CTkLabel(self.initiative_frame, text = "Initiative", font = ctk.CTkFont(size = 15, weight = "bold"))
-        initiative_label.grid(row = 0, column = 1, padx = 200)
+        initiative_label.grid(row = 0, column = 1, padx = 100)
 
         if self.combat_round == 1 and not self.isDM and len(self.initiativeList) > 0:
             cName_label = ctk.CTkLabel(self.initiative_frame, text = self.initiativeList[0].pName)
@@ -477,13 +501,14 @@ class MainWindow(ctk.CTk):
         self.combatantsList.append(temp)
 
         self.buildInitiative()
-
+        
         if self.combat_start:
             while not self.initiativeList[0] == currentTurn:
                 self.nextInitiative()
-        self.drawInitiative()
-        if not self.combat_start:
-            self.drawInfoFrame()
+            self.drawInitiative()
+        else:
+            if self.isDM:
+                self.drawInitiative()
 
     def buildInitiative(self):
         tempCombatantsList = self.combatantsList.copy()
@@ -525,7 +550,8 @@ class MainWindow(ctk.CTk):
         combat_start_button = ctk.CTkButton(button_frame, text= "Start Combat")
         main_frame = ctk.CTkFrame(self, 1920, 800)
         main_frame.pack()
-        self.initiative_frame = ctk.CTkScrollableFrame(main_frame, 1400, 800)
+        self.info_list_frame = ctk.CTkScrollableFrame(main_frame, 1400, 800)
+        self.info_list_frame.grid(row = 0, column = 1, pady= 10)
 
         next_button.configure(command=self.nextInitiative)
         restart_button.configure(command= lambda next_button = next_button, clear_button = clear_button, combat_start_button = combat_start_button:self.restartCombat(restart_button, next_button, clear_button, combat_start_button))
@@ -534,13 +560,15 @@ class MainWindow(ctk.CTk):
 
         side_frame = ctk.CTkFrame(main_frame, 500, 800)
         side_frame.grid(row = 0, column = 0)
-        self.info_list_frame = ctk.CTkFrame(side_frame, 500, 400)
-        self.info_list_frame.grid(row = 0, column = 0)
-        pythagorean_frame = ctk.CTkFrame(side_frame, 500, 400)
-        pythagorean_frame.grid(row = 1, column = 0)
+        self.initiative_frame = ctk.CTkScrollableFrame(side_frame, 500, 400)
+        self.initiative_frame.grid(row = 0, column = 0)
+        self.pythagorean_frame = ctk.CTkFrame(side_frame, 500, 400)
+        self.pythagorean_frame.grid(row = 1, column = 0)
+
+        self.drawPythagoreanFrame("")
 
         #Scrollale Frame for the initiative order
-        self.initiative_frame.grid(row = 0, column = 1, pady= 10)
+        
 
         self.drawInitiative()
 
