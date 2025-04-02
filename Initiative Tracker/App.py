@@ -545,7 +545,7 @@ class MainWindow(ctk.CTk):
         name_label = ctk.CTkLabel(self.initiative_frame, text = "Name", font = ctk.CTkFont(size = 15, weight = "bold"))
         name_label.grid(row = 0, column = 0, padx = 100)
         initiative_label = ctk.CTkLabel(self.initiative_frame, text = "Initiative", font = ctk.CTkFont(size = 15, weight = "bold"))
-        initiative_label.grid(row = 0, column = 1, padx = 100)
+        initiative_label.grid(row = 0, column = 1, padx = (50, 0))
 
 
         if((not self.combat_start) and (not self.isDM)):
@@ -568,6 +568,7 @@ class MainWindow(ctk.CTk):
                     cInitiative_label.grid(row = i + 1, column = 1, pady = 10)
 
                     if self.isDM:
+                        print("Here")
                         remove_button = ctk.CTkButton(self.initiative_frame, text= "Remove", command= lambda combatant = self.initiativeList[i]:self.removeCombatant(combatant))
                         remove_button.grid(row = i + 1, column = 2, pady = 10)
 
