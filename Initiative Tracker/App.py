@@ -354,7 +354,7 @@ class MainWindow(ctk.CTk):
                     newInitiative = int(dialog.get_input())
                     player.setInitiative(newInitiative)
                     for player in self.connections:
-                        self.establishTCPSender(self.connections[player][0], f"updateInitiative/{player.pName}:{newInitiative}")
+                        self.establishTCPSender(self.connections[player][0], f"updateInitiative/{player}:{newInitiative}")
 
         self.combatantsList = self.playerList.copy()
         self.initiativeList.clear()
