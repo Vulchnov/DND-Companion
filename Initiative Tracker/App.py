@@ -264,12 +264,15 @@ class MainWindow(ctk.CTk):
                 saveDC = None
                 if not info[4] =="None":
                     saveDC= int(info[4])
+                for combatant in self.combatantsList:
+                    self.establishTCPSender(info[5], f"addCombatant/{combatant.pName}:{combatant.initiative}:{combatant.dex}:{combatant.ac}:{combatant.saveDC}:{combatant.isPlayer}")
                 self.createCombatant(info[0], initiative, dex, True, None, ac, saveDC, True)
 
-                for combatant in self.playerList:
-                    if combatant.pName == info[0]:
-                        temp = combatant
+                for player in self.playerList:
+                    if player.pName == info[0]:
+                        temp = player
                 self.connections[info[0]] = (info[5], temp)
+
 
 
             case TicketPurpose.ADD_COMBATANT:
