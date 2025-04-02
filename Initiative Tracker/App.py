@@ -819,7 +819,7 @@ class MainWindow(ctk.CTk):
     def askInitiative(self):
         dialog = ctk.CTkInputDialog(text= "What did you get for Initiative")
         newInitiative = int(dialog.get_input())
-        message = f"updateInitiative/{self.player.pName}:{newInitiative}"
+        message = f"updateInitiative/{self.playerSelf.pName}:{newInitiative}"
         self.establishTCPSender(self.connections["DM"][0], message)
 
 
