@@ -823,6 +823,7 @@ class MainWindow(ctk.CTk):
         newInitiative = int(dialog.get_input())
         message = f"updateInitiative/{self.playerSelf.pName}:{newInitiative}"
         self.establishTCPSender(self.connections["DM"][0], message)
+        self.updateInitiative(self.playerSelf, newInitiative)
 
 
     def startScreen(self):
