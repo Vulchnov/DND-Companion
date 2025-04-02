@@ -353,8 +353,8 @@ class MainWindow(ctk.CTk):
                     player.setInitiative(newInitiative)
                     for playerCon in self.connections:
                         self.establishTCPSender(self.connections[playerCon][0], f"updateInitiative/{player.pName}:{newInitiative}")
-            for player in self.connections:
-                self.establishTCPSender(self.connections[player][0], "askInitiative")
+            for playerCon in self.connections:
+                self.establishTCPSender(self.connections[playerCon][0], "askInitiative")
 
         self.combatantsList = self.playerList.copy()
         self.initiativeList.clear()
@@ -363,8 +363,8 @@ class MainWindow(ctk.CTk):
 
     def updateInitiative(self, player, initiative):
         if self.isDM:
-            for player in self.connections:
-                self.establishTCPSender(self.connections[player][0], f"updateInitiative/{player}:{initiative}")
+            for playerCon in self.connections:
+                self.establishTCPSender(self.connections[playerCon][0], f"updateInitiative/{player.pName}:{initiative}")
         player.setInitiative(initiative)
         self.buildInitiative()
         self.drawInitiative()
