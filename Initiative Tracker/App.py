@@ -344,6 +344,23 @@ class MainWindow(ctk.CTk):
         self.initiativeList.append(self.initiativeList.pop(0))
         self.drawInitiative()
 
+    def promptInitiative(self, player):
+        promptWindow = ctk.CTkToplevel(self)
+        promptWindow.title("Initiative Swap")
+        promptWindow.geometry("400x200")
+        promptWindow.resizable(False, False)
+        initiative_label = ctk.CTkLabel(promptWindow, text=f"New Initiative for {player.pName}")
+        initiative_entry = ctk.CTkEntry(promptWindow)
+        initiative_label.pack()
+        initiative_entry.pack(pady = 20)
+        enter_button = ctk.CTkButton(promptWindow, text="Enter", command= lambda player = player, initiative_entry = initiative_entry, promptWindow = promptWindow: self.initiativePromptUpdate(player, initiative_entry, promptWindow))
+        enter_button.pack()
+
+    def initiativePromptUpdate(self, playerName, initiative_entry, promptWindow):
+        initiative = int(initiative_entry.get())
+        promptWindow.destroy()
+        self.updateInitiative(playerName, initiative)
+
     def restartCombat(self, restart_button, next_button, clear_button, combat_start_button):
         self.combat_start = False
         self.combat_round = 0
@@ -355,14 +372,10 @@ class MainWindow(ctk.CTk):
             clear_button.grid_forget()
             restart_button.grid_forget()
             for player in self.playerList:
-                if not player.connected:
-                    dialog = ctk.CTkInputDialog(text= "New initiative for " + player.pName)
-                    newInitiative = int(dialog.get_input())
-                    player.setInitiative(newInitiative)
-                    for playerCon in self.connections:
-                        self.establishTCPSender(self.connections[playerCon][0], f"updateInitiative/{player.pName}:{newInitiative}")
-            for playerCon in self.connections:
-                self.establishTCPSender(self.connections[playerCon][0], "askInitiative")
+                if player.connected:
+                    self.establishTCPSender(self.connections[player.pName][0], "askInitiative")
+                else:
+                    self.promptInitiative(player)
 
         self.combatantsList = self.playerList.copy()
         self.initiativeList.clear()
