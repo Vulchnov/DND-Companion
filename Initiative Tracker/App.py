@@ -284,7 +284,7 @@ class MainWindow(ctk.CTk):
 
             case TicketPurpose.ASK_INITIATIVE:
                 self.askInitiative()
-
+                self.restartCombat(None, None, None, None)
 
             case TicketPurpose.UPDATE_INITIATIVE:
                 info = msg.ticket_value.split(":")
@@ -351,8 +351,8 @@ class MainWindow(ctk.CTk):
                     dialog = ctk.CTkInputDialog(text= "New initiative for " + player.pName)
                     newInitiative = int(dialog.get_input())
                     player.setInitiative(newInitiative)
-                    for player in self.connections:
-                        self.establishTCPSender(self.connections[player][0], f"updateInitiative/{player}:{newInitiative}")
+                    for playerCon in self.connections:
+                        self.establishTCPSender(self.connections[playerCon][0], f"updateInitiative/{player.pName}:{newInitiative}")
             for player in self.connections:
                 self.establishTCPSender(self.connections[player][0], "askInitiative")
 
