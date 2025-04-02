@@ -314,9 +314,14 @@ class MainWindow(ctk.CTk):
                 self.swapInitiative(player1, player2)
 
             case TicketPurpose.REMOVE_COMBATANT:
-                for combatant in self.combatantsList:
-                    if combatant.pName == msg.ticket_value:
-                        self.removeCombatant(combatant)
+                if msg.ticket_value == self.playerSelf.pName:
+                    self.clearInitiative(None, None, None, None)
+                else:
+                    for combatant in self.combatantsList:
+                        if combatant.pName == msg.ticket_value:
+                            self.removeCombatant(combatant)
+
+            
             case TicketPurpose.CLEAR_INITIATIVE:
                 self.clearInitiative(None, None, None, None)
 
