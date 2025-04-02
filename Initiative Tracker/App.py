@@ -346,8 +346,6 @@ class MainWindow(ctk.CTk):
             next_button.grid_forget()
             clear_button.grid_forget()
             restart_button.grid_forget()
-            for player in self.connections:
-                self.establishTCPSender(self.connections[player][0], "askInitiative")
             for player in self.playerList:
                 if not player.connected:
                     dialog = ctk.CTkInputDialog(text= "New initiative for " + player.pName)
@@ -355,6 +353,8 @@ class MainWindow(ctk.CTk):
                     player.setInitiative(newInitiative)
                     for player in self.connections:
                         self.establishTCPSender(self.connections[player][0], f"updateInitiative/{player}:{newInitiative}")
+            for player in self.connections:
+                self.establishTCPSender(self.connections[player][0], "askInitiative")
 
         self.combatantsList = self.playerList.copy()
         self.initiativeList.clear()
