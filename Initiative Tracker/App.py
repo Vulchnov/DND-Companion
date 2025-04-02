@@ -1,10 +1,14 @@
 import customtkinter as ctk
 import combatant
 import threading
-from queue import Queue
-from enum import Enum, auto
 from math import sqrt
 
+
+#socket imports
+import socket
+import select
+from queue import Queue
+from enum import Enum, auto
 
 class TicketPurpose(Enum):
     PLAYER_CONNECT = auto()
@@ -12,18 +16,14 @@ class TicketPurpose(Enum):
     ASK_INITIATIVE = auto()
     START_COMBAT = auto()
     UPDATE_INITIATIVE = auto()
-
+    NEXT_INITIATIVE = auto()
+    SWAP_INITIATIVE = auto()
 
 class Ticket():
     def __init__(self, ticket_type: TicketPurpose, ticket_value: str):
         self.ticket_type = ticket_type
         self.ticket_value = ticket_value
 
-
-
-#socket imports
-import socket
-import select
 
 class MainWindow(ctk.CTk):
     def __init__(self):
@@ -35,16 +35,19 @@ class MainWindow(ctk.CTk):
         self.info_list_frame = None
         self.initiative_frame = None
         self.pythagorean_frame = None
-        self.combat_round = 1
+        self.round_label = None
+        self.combat_round = 0
         self.combat_start = False
         self.isDM = False
+        self.initiativeSwapButton = None
+
 
         
         #Socket Information
         self.connections = {}
         self.sockets = []
         self.isConnected = False
-        self.player = None
+        self.playerSelf = None
         self.message_queue = Queue()
 
         self.bind("<<CheckQueue>>", self.checkQueue)
@@ -120,6 +123,7 @@ class MainWindow(ctk.CTk):
                 self.connections["DM"] = (server_addr[0], None)
                 self.isConnected = True
                 client_socket.close()
+                self.playerScreen()
             except socket.timeout:
                 print("No response received.")
 
@@ -208,6 +212,16 @@ class MainWindow(ctk.CTk):
                 self.message_queue.put(ticket)
                 self.event_generate("<<CheckQueue>>")
 
+            case "nextInitiative":
+                ticket = Ticket(TicketPurpose.NEXT_INITIATIVE, "")
+                self.message_queue.put(ticket)
+                self.event_generate("<<CheckQueue>>")
+
+            case "swapInitiative":
+                ticket = Ticket(TicketPurpose.SWAP_INITIATIVE, messageSplit[1])
+                self.message_queue.put(ticket)
+                self.event_generate("<<CheckQueue>>")
+
             case _:
                 pass
 
@@ -251,7 +265,7 @@ class MainWindow(ctk.CTk):
                 saveDC = None
                 if not info[4] == "None":
                     saveDC = int(info[4])
-                self.createCombatant(info[0], int(info[1]), int(info[2]), True, None, info[3], saveDC, True)
+                self.createCombatant(info[0], int(info[1]), int(info[2]), bool(info[5]), None, info[3], saveDC, False)
 
 
             case TicketPurpose.ASK_INITIATIVE:
@@ -264,7 +278,22 @@ class MainWindow(ctk.CTk):
 
 
             case TicketPurpose.START_COMBAT:
-                pass
+                self.startCombat()
+
+
+            case TicketPurpose.NEXT_INITIATIVE:
+                self.nextInitiative()
+
+            case TicketPurpose.SWAP_INITIATIVE:
+                info = msg.ticket_value.split(":")
+                player1 = None
+                player2 = None
+                for player in self.playerList:
+                    if player.pName == info[0]:
+                        player1 = player
+                    elif player.pName == info[1]:
+                        player2 = player
+                self.swapInitiative(player1, player2)
 
 
             case _:
@@ -272,15 +301,21 @@ class MainWindow(ctk.CTk):
         
 
     def nextInitiative(self):
+        if self.isDM:
+            for player in self.connections:
+                self.establishTCPSender(self.connections[player][0], "nextInitiative")
         if self.initiativeList[1] == "End":
             self.initiativeList.append(self.initiativeList.pop(0))
             self.combat_round += 1
+            self.round_label.configure(text = f"Round: {self.combat_round}")
         self.initiativeList.append(self.initiativeList.pop(0))
         self.drawInitiative()
 
-
     def restartCombat(self, restart_button, next_button, clear_button, combat_start_button):
         self.combat_start = False
+        self.combat_round = 0
+        self.round_label.configure(text = f"Round: {self.combat_round}")
+        self.initiativeSwapButton.pack()
         combat_start_button.grid(row = 0, column = 4)
         next_button.grid_forget()
         clear_button.grid_forget()
@@ -305,6 +340,9 @@ class MainWindow(ctk.CTk):
 
     def clearInitiative(self, restart_button, next_button, clear_button, combat_start_button):
         self.combat_start = False
+        self.combat_round = 0
+        self.round_label.configure(text = f"Round: {self.combat_round}")
+        self.initiativeSwapButton.pack()
         combat_start_button.grid(row = 0, column = 4)
         next_button.grid_forget()
         clear_button.grid_forget()
@@ -315,11 +353,19 @@ class MainWindow(ctk.CTk):
         self.drawInitiative()
         
     def startCombat(self, restart_button, next_button, clear_button, combat_start_button):
+        if self.isDM:
+            for player in self.connections:
+                self.establishTCPSender(self.connections[player][0], "startCombat")
+            self.initiativeSwapButton.pack_forget()
+            combat_start_button.grid_forget()
+            next_button.grid(row = 0, column = 0, padx = 10)
+            clear_button.grid(row = 0, column = 1, padx = 10)
+            restart_button.grid(row = 0, column = 2, padx = 10)
         self.combat_start = True
-        combat_start_button.grid_forget()
-        next_button.grid(row = 0, column = 0, padx = 10)
-        clear_button.grid(row = 0, column = 1, padx = 10)
-        restart_button.grid(row = 0, column = 2, padx = 10)
+        self.combat_round = 1
+        self.round_label.configure(text = f"Round: {self.combat_round}")
+        self.drawInitiative()
+        
 
     def isPlayerCheckBoxCommand(self, health_entry, isPlayerCheckbox):
         if(isPlayerCheckbox.get()):
@@ -340,8 +386,40 @@ class MainWindow(ctk.CTk):
             self.playerList.remove(combatant)
         self.drawInitiative()
 
+    def promptInitiativeSwap(self):
+        promptWindow = ctk.CTkToplevel(self)
+        promptWindow.title("Initiative Swap")
+        promptWindow.geometry("400x200")
+        promptWindow.resizable(False, False)
+        entry_frame = ctk.CTkFrame(promptWindow)
+        entry_frame.pack()
+        entry1 = ctk.CTkEntry(entry_frame, placeholder_text="Player 1")
+        entry2 = ctk.CTkEntry(entry_frame, placeholder_text="Player 2")
+        entry1.grid(row = 0, column = 0, padx = (50, 25), pady = 50)
+        entry2.grid(row = 0, column = 1, padx = (25, 50), pady = 50)
+        enter_button = ctk.CTkButton(promptWindow, text="Enter", command= lambda entry1 = entry1, entry2 = entry2, promptWindow = promptWindow: self.dmSwapInitiative(entry1, entry2, promptWindow))
+        enter_button.pack()
+
+    
+    def dmSwapInitiative(self, entry1, entry2, promptWindow):
+        p1Name = entry1.get()
+        p2Name = entry2.get()
+        for player in self.connections:
+            self.establishTCPSender(self.connections[player][0], f"swapInitiative/{p1Name}:{p2Name}")
+        player1 = None
+        player2 = None
+        for player in self.playerList:
+            if player.pName == p1Name:
+                player1 = player
+            elif player.pName == p2Name:
+                player2 = player
+        self.swapInitiative(player1, player2)
+        promptWindow.destroy()
+
     def swapInitiative(self, combatant1, combatant2):
-        combatant1.Initiative, combatant2.Initiative = combatant2.Initiative, combatant1.Initiative
+        combatant1.initiative, combatant2.initiative = combatant2.initiative, combatant1.initiative
+        self.buildInitiative()
+        self.drawInitiative()
     
     def healCombatant(self, combatant, entry):
         combatant.health += int(entry.get())
@@ -411,11 +489,14 @@ class MainWindow(ctk.CTk):
                     cHealth_harm_button.pack()
 
 
+
     #Draw the initiative order
     def drawInitiative(self):
         for child in self.initiative_frame.winfo_children():
             child.destroy()
 
+        if self.isDM:
+            self.drawInfoFrame()
 
         #Inside Frame
         name_label = ctk.CTkLabel(self.initiative_frame, text = "Name", font = ctk.CTkFont(size = 15, weight = "bold"))
@@ -423,7 +504,13 @@ class MainWindow(ctk.CTk):
         initiative_label = ctk.CTkLabel(self.initiative_frame, text = "Initiative", font = ctk.CTkFont(size = 15, weight = "bold"))
         initiative_label.grid(row = 0, column = 1, padx = 100)
 
-        if self.combat_round == 1 and not self.isDM and len(self.initiativeList) > 0:
+        if not self.combat_start and not self.isDM:
+            for i in range(len(self.playerList)):
+                cName_label = ctk.CTkLabel(self.initiative_frame, text = self.playerList[i].pName)
+                cInitiative_label = ctk.CTkLabel(self.initiative_frame, text = self.playerList[i].initiative)
+                cName_label.grid(row = 1, column = 0, pady = 10)
+                cInitiative_label.grid(row = 1, column = 1, pady = 10)
+        elif self.combat_round == 1 and not self.isDM:
             cName_label = ctk.CTkLabel(self.initiative_frame, text = self.initiativeList[0].pName)
             cInitiative_label = ctk.CTkLabel(self.initiative_frame, text = self.initiativeList[0].initiative)
             cName_label.grid(row = 1, column = 0, pady = 10)
@@ -468,6 +555,8 @@ class MainWindow(ctk.CTk):
         isPlayer = isPlayerCheckBox.get()
         ac = int(ac_entry.get())
         
+        for player in self.connections:
+            self.establishTCPSender(self.connections[player][0], f"addCombatant/{name}:{initiative}:{dex}:{ac}:{SaveDC}:{isPlayer}")
         
         initiative_entry.delete(0, ctk.END)
         dex_entry.delete(0, ctk.END)
@@ -504,7 +593,7 @@ class MainWindow(ctk.CTk):
         
         if self.combat_start:
             while not self.initiativeList[0] == currentTurn:
-                self.nextInitiative()
+                self.initiativeList.append(self.initiativeList.pop(0))
             self.drawInitiative()
         else:
             if self.isDM:
@@ -541,6 +630,9 @@ class MainWindow(ctk.CTk):
         title_label = ctk.CTkLabel(self, text = "Combat Tracker", font = ctk.CTkFont(size = 30, weight = "bold"))
         title_label.pack(padx = 0, pady = 20)
 
+        self.round_label = ctk.CTkLabel(self, text = f"Round: {self.combat_round}", font = ctk.CTkFont(size = 20, weight = "bold"))
+        self.round_label.pack(pady = 10)
+
         #Options Buttons
         button_frame = ctk.CTkFrame(self, 1400, 100)
         button_frame.pack()
@@ -560,10 +652,14 @@ class MainWindow(ctk.CTk):
 
         side_frame = ctk.CTkFrame(main_frame, 500, 800)
         side_frame.grid(row = 0, column = 0)
+        swap_button_frame = ctk.CTkFrame(side_frame)
+        swap_button_frame.pack()
+        self.initiativeSwapButton = ctk.CTkButton(swap_button_frame, text="Swap Initiatives", command=self.promptInitiativeSwap)
+        self.initiativeSwapButton.pack()
         self.initiative_frame = ctk.CTkScrollableFrame(side_frame, 500, 400)
-        self.initiative_frame.grid(row = 0, column = 0)
+        self.initiative_frame.pack()
         self.pythagorean_frame = ctk.CTkFrame(side_frame, 500, 400)
-        self.pythagorean_frame.grid(row = 1, column = 0)
+        self.pythagorean_frame.pack()
 
         self.drawPythagoreanFrame("")
 
@@ -604,7 +700,36 @@ class MainWindow(ctk.CTk):
 
 
     def playerScreen(self):
-        pass
+        #Clear whats currently on the screen
+        for child in self.winfo_children():
+            child.destroy()
+
+
+        self.playerList.append(self.playerSelf)
+
+        #Title for the main window
+        title_label = ctk.CTkLabel(self, text = "Combat Tracker", font = ctk.CTkFont(size = 30, weight = "bold"))
+        title_label.pack(padx = 0, pady = 20)
+
+        self.round_label = ctk.CTkLabel(self, text = f"Round: {self.combat_round}", font = ctk.CTkFont(size = 20, weight = "bold"))
+        self.round_label.pack(pady = 10)
+
+        main_frame = ctk.CTkFrame(self, 1920, 800)
+        main_frame.pack()
+
+        side_frame = ctk.CTkFrame(main_frame, 500, 800)
+        side_frame.grid(row = 0, column = 0)
+        self.initiative_frame = ctk.CTkScrollableFrame(main_frame, 1400, 800)
+        self.initiative_frame.grid(row = 0, column = 0)
+        self.pythagorean_frame = ctk.CTkFrame(side_frame, 500, 400)
+        self.pythagorean_frame.grid(row = 1, column = 0)
+
+        self.drawPythagoreanFrame("")
+
+        #Scrollale Frame for the initiative order
+        self.drawInitiative()
+
+
 
     def playerConnect(self, name_entry,initiative_entry, dex_entry, ac_entry, saveDC_entry):
         name = name_entry.get()
@@ -615,7 +740,7 @@ class MainWindow(ctk.CTk):
         if not saveDC_entry.get() == "":
             saveDC = saveDC_entry.get()
 
-        self.player = combatant.combatant(int(initiative), int(dex), name, True, None, int(ac), saveDC, True)
+        self.playerSelf = combatant.combatant(int(initiative), int(dex), name, True, None, int(ac), saveDC, True)
         message = f"{name}:{initiative}:{dex}:{ac}:{saveDC}"
         self.establishUDPSender(message)
 
