@@ -18,6 +18,8 @@ class TicketPurpose(Enum):
     UPDATE_INITIATIVE = auto()
     NEXT_INITIATIVE = auto()
     SWAP_INITIATIVE = auto()
+    REMOVE_COMBATANT = auto()
+    CLEAR_INITIATIVE = auto()
 
 class Ticket():
     def __init__(self, ticket_type: TicketPurpose, ticket_value: str):
@@ -222,6 +224,16 @@ class MainWindow(ctk.CTk):
                 self.message_queue.put(ticket)
                 self.event_generate("<<CheckQueue>>")
 
+            case "removeCombatant":
+                ticket = Ticket(TicketPurpose.REMOVE_COMBATANT, messageSplit[1])
+                self.message_queue.put(ticket)
+                self.event_generate("<<CheckQueue>>")
+
+            case "clearInitiative":
+                ticket = Ticket(TicketPurpose.CLEAR_INITIATIVE, "")
+                self.message_queue.put(ticket)
+                self.event_generate("<<CheckQueue>>")
+
             case _:
                 pass
 
@@ -276,7 +288,11 @@ class MainWindow(ctk.CTk):
 
             case TicketPurpose.UPDATE_INITIATIVE:
                 info = msg.ticket_value.split(":")
-                self.updateInitiative(self.connections[info[0]][1], int(info[1]))
+                playerRef = None
+                for player in self.playerList:
+                    if player.pName == info[0]:
+                        playerRef = player
+                self.updateInitiative(playerRef, int(info[1]))
 
 
             case TicketPurpose.START_COMBAT:
@@ -297,7 +313,14 @@ class MainWindow(ctk.CTk):
                         player2 = player
                 self.swapInitiative(player1, player2)
 
+            case TicketPurpose.REMOVE_COMBATANT:
+                for combatant in self.combatantsList:
+                    if combatant.pName == msg.ticket_value:
+                        self.removeCombatant(combatant)
+            case TicketPurpose.CLEAR_INITIATIVE:
+                self.clearInitiative(None, None, None, None)
 
+    
             case _:
                 pass
         
@@ -317,18 +340,21 @@ class MainWindow(ctk.CTk):
         self.combat_start = False
         self.combat_round = 0
         self.round_label.configure(text = f"Round: {self.combat_round}")
-        self.initiativeSwapButton.pack()
-        combat_start_button.grid(row = 0, column = 4)
-        next_button.grid_forget()
-        clear_button.grid_forget()
-        restart_button.grid_forget()
-        for player in self.playerList:
-            if not player.connected:
-                dialog = ctk.CTkInputDialog(text= "New initiative for " + player.pName)
-                newInitiative = int(dialog.get_input())
-                player.setInitiative(newInitiative)
-            else:
-                self.establishTCPSender(self.connections[player.pName][0], "askInitiative")
+        if self.isDM:
+            self.initiativeSwapButton.pack()
+            combat_start_button.grid(row = 0, column = 4)
+            next_button.grid_forget()
+            clear_button.grid_forget()
+            restart_button.grid_forget()
+            for player in self.connections:
+                self.establishTCPSender(self.connections[player][0], "askInitiative")
+            for player in self.playerList:
+                if not player.connected:
+                    dialog = ctk.CTkInputDialog(text= "New initiative for " + player.pName)
+                    newInitiative = int(dialog.get_input())
+                    player.setInitiative(newInitiative)
+                    for player in self.connections:
+                        self.establishTCPSender(self.connections[player][0], f"updateInitiative/{player.pName}:{newInitiative}")
 
         self.combatantsList = self.playerList.copy()
         self.initiativeList.clear()
@@ -336,23 +362,37 @@ class MainWindow(ctk.CTk):
         self.drawInitiative()
 
     def updateInitiative(self, player, initiative):
+        if self.isDM:
+            for player in self.connections:
+                self.establishTCPSender(self.connections[player][0], f"updateInitiative/{player.pName}:{initiative}")
         player.setInitiative(initiative)
         self.buildInitiative()
         self.drawInitiative()
 
     def clearInitiative(self, restart_button, next_button, clear_button, combat_start_button):
-        self.combat_start = False
-        self.combat_round = 0
-        self.round_label.configure(text = f"Round: {self.combat_round}")
-        self.initiativeSwapButton.pack()
-        combat_start_button.grid(row = 0, column = 4)
-        next_button.grid_forget()
-        clear_button.grid_forget()
-        restart_button.grid_forget()
-        self.initiativeList.clear()
-        self.playerList.clear()
-        self.combatantsList.clear()
-        self.drawInitiative()
+        if not self.isDM:
+            self.initiativeList.clear()
+            self.playerList.clear()
+            self.combatantsList.clear()
+            self.connections.clear()
+            self.playerSelf = None
+            self.playerStartScreen()
+        else:
+            for player in self.connections:
+                self.establishTCPSender(self.connections[player][0], "clearInitiative")
+            self.combat_start = False
+            self.combat_round = 0
+            self.round_label.configure(text = f"Round: {self.combat_round}")
+            self.initiativeSwapButton.pack()
+            combat_start_button.grid(row = 0, column = 4)
+            next_button.grid_forget()
+            clear_button.grid_forget()
+            restart_button.grid_forget()
+            self.initiativeList.clear()
+            self.playerList.clear()
+            self.combatantsList.clear()
+            self.connections.clear()
+            self.drawInitiative()
         
     def startCombat(self, restart_button, next_button, clear_button, combat_start_button):
         if self.isDM:
