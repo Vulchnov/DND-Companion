@@ -273,8 +273,6 @@ class MainWindow(ctk.CTk):
                         temp = player
                 self.connections[info[0]] = (info[5], temp)
 
-
-
             case TicketPurpose.ADD_COMBATANT:
                 info = msg.ticket_value.split(":")
                 saveDC = None
@@ -286,7 +284,7 @@ class MainWindow(ctk.CTk):
                 self.createCombatant(info[0], int(info[1]), int(info[2]), isPlayer, None, info[3], saveDC, False)
 
             case TicketPurpose.ASK_INITIATIVE:
-                self.askInitiative()
+                self.promptInitiative(self.playerSelf)
                 self.restartCombat(None, None, None, None)
 
             case TicketPurpose.UPDATE_INITIATIVE:
@@ -346,19 +344,22 @@ class MainWindow(ctk.CTk):
 
     def promptInitiative(self, player):
         promptWindow = ctk.CTkToplevel(self)
-        promptWindow.title("Initiative Swap")
+        promptWindow.title("New Initiative")
         promptWindow.geometry("400x200")
         promptWindow.resizable(False, False)
         initiative_label = ctk.CTkLabel(promptWindow, text=f"New Initiative for {player.pName}")
         initiative_entry = ctk.CTkEntry(promptWindow)
         initiative_label.pack()
         initiative_entry.pack(pady = 20)
-        enter_button = ctk.CTkButton(promptWindow, text="Enter", command= lambda player = player, initiative_entry = initiative_entry, promptWindow = promptWindow: self.initiativePromptUpdate(player, initiative_entry, promptWindow))
+        enter_button = ctk.CTkButton(promptWindow, text="Enter", command= lambda player = player, initiative_entry = initiative_entry, promptWindow = promptWindow: self.initiativePromptAction(player, initiative_entry, promptWindow))
         enter_button.pack()
 
-    def initiativePromptUpdate(self, playerName, initiative_entry, promptWindow):
+    def initiativePromptAction(self, playerName, initiative_entry, promptWindow):
         initiative = int(initiative_entry.get())
         promptWindow.destroy()
+        if not self.isDM:
+            message = f"updateInitiative/{playerName}:{initiative}"
+            self.establishTCPSender(self.connections["DM"][0], message)
         self.updateInitiative(playerName, initiative)
 
     def restartCombat(self, restart_button, next_button, clear_button, combat_start_button):
@@ -835,14 +836,6 @@ class MainWindow(ctk.CTk):
         connect_button.pack()
 
         hasSaveDCCheckBox.configure(command = lambda saveDC_entry = saveDC_entry:self.hasSaveDCCheckBoxCommand(saveDC_entry, hasSaveDCCheckBox))
-
-
-    def askInitiative(self):
-        dialog = ctk.CTkInputDialog(text= "What did you get for Initiative")
-        newInitiative = int(dialog.get_input())
-        message = f"updateInitiative/{self.playerSelf.pName}:{newInitiative}"
-        self.establishTCPSender(self.connections["DM"][0], message)
-        self.updateInitiative(self.playerSelf, newInitiative)
 
 
     def startScreen(self):
