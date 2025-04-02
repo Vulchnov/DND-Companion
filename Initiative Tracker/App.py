@@ -265,8 +265,10 @@ class MainWindow(ctk.CTk):
                 saveDC = None
                 if not info[4] == "None":
                     saveDC = int(info[4])
-                self.createCombatant(info[0], int(info[1]), int(info[2]), bool(info[5]), None, info[3], saveDC, False)
-
+                isPlayer = False
+                if info[5] == "True":
+                    isPlayer = True
+                self.createCombatant(info[0], int(info[1]), int(info[2]), isPlayer, None, info[3], saveDC, False)
 
             case TicketPurpose.ASK_INITIATIVE:
                 self.askInitiative()
@@ -278,7 +280,7 @@ class MainWindow(ctk.CTk):
 
 
             case TicketPurpose.START_COMBAT:
-                self.startCombat()
+                self.startCombat(None, None, None, None)
 
 
             case TicketPurpose.NEXT_INITIATIVE:
@@ -504,12 +506,13 @@ class MainWindow(ctk.CTk):
         initiative_label = ctk.CTkLabel(self.initiative_frame, text = "Initiative", font = ctk.CTkFont(size = 15, weight = "bold"))
         initiative_label.grid(row = 0, column = 1, padx = 100)
 
-        if not self.combat_start and not self.isDM:
+
+        if((not self.combat_start) and (not self.isDM)):
             for i in range(len(self.playerList)):
                 cName_label = ctk.CTkLabel(self.initiative_frame, text = self.playerList[i].pName)
                 cInitiative_label = ctk.CTkLabel(self.initiative_frame, text = self.playerList[i].initiative)
-                cName_label.grid(row = 1, column = 0, pady = 10)
-                cInitiative_label.grid(row = 1, column = 1, pady = 10)
+                cName_label.grid(row = i+1, column = 0, pady = 10)
+                cInitiative_label.grid(row = i+1, column = 1, pady = 10)
         elif self.combat_round == 1 and not self.isDM:
             cName_label = ctk.CTkLabel(self.initiative_frame, text = self.initiativeList[0].pName)
             cInitiative_label = ctk.CTkLabel(self.initiative_frame, text = self.initiativeList[0].initiative)
@@ -594,10 +597,7 @@ class MainWindow(ctk.CTk):
         if self.combat_start:
             while not self.initiativeList[0] == currentTurn:
                 self.initiativeList.append(self.initiativeList.pop(0))
-            self.drawInitiative()
-        else:
-            if self.isDM:
-                self.drawInitiative()
+        self.drawInitiative()
 
     def buildInitiative(self):
         tempCombatantsList = self.combatantsList.copy()
@@ -706,6 +706,7 @@ class MainWindow(ctk.CTk):
 
 
         self.playerList.append(self.playerSelf)
+        self.combatantsList.append(self.playerSelf)
 
         #Title for the main window
         title_label = ctk.CTkLabel(self, text = "Combat Tracker", font = ctk.CTkFont(size = 30, weight = "bold"))
