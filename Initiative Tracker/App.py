@@ -769,7 +769,7 @@ class MainWindow(ctk.CTk):
         side_frame = ctk.CTkFrame(main_frame, 500, 800)
         side_frame.grid(row = 0, column = 0)
         self.initiative_frame = ctk.CTkScrollableFrame(main_frame, 1400, 800)
-        self.initiative_frame.grid(row = 0, column = 0)
+        self.initiative_frame.grid(row = 0, column = 1)
         self.pythagorean_frame = ctk.CTkFrame(side_frame, 500, 400)
         self.pythagorean_frame.grid(row = 1, column = 0)
 
