@@ -431,6 +431,8 @@ class MainWindow(ctk.CTk):
             saveDC_entry.grid_forget()
 
     def removeCombatant(self, combatant):
+        for player in self.connections:
+            self.establishTCPSender(self.connections[player][0], f"removeCombatant/{combatant.pName}")
         self.initiativeList.remove(combatant)
         self.combatantsList.remove(combatant)
         if combatant.isPlayer:
@@ -576,7 +578,6 @@ class MainWindow(ctk.CTk):
                     cInitiative_label.grid(row = i + 1, column = 1, pady = 10)
 
                     if self.isDM:
-                        print("Here")
                         remove_button = ctk.CTkButton(self.initiative_frame, text= "Remove", command= lambda combatant = self.initiativeList[i]:self.removeCombatant(combatant))
                         remove_button.grid(row = i + 1, column = 2, pady = 10)
 
