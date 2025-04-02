@@ -364,7 +364,8 @@ class MainWindow(ctk.CTk):
     def updateInitiative(self, player, initiative):
         if self.isDM:
             for playerCon in self.connections:
-                self.establishTCPSender(self.connections[playerCon][0], f"updateInitiative/{player.pName}:{initiative}")
+                if not player.pName == playerCon:
+                    self.establishTCPSender(self.connections[playerCon][0], f"updateInitiative/{player.pName}:{initiative}")
         player.setInitiative(initiative)
         self.buildInitiative()
         self.drawInitiative()
