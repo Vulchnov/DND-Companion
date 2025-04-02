@@ -569,7 +569,7 @@ class MainWindow(ctk.CTk):
 
                     if self.isDM:
                         remove_button = ctk.CTkButton(self.initiative_frame, text= "Remove", command= lambda combatant = self.initiativeList[i]:self.removeCombatant(combatant))
-                        remove_button.grid(row = i + 1, column = 2, padx = 20, pady = 10)
+                        remove_button.grid(row = i + 1, column = 2, pady = 10)
 
 
     def displayAddCombatant(self, display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, isPlayerCheckBox, add_combatant_button, ac_entry, checkBoxFrame, hasSaveDCCHeckbox):
@@ -669,7 +669,7 @@ class MainWindow(ctk.CTk):
         
         #Title for the main window
         title_label = ctk.CTkLabel(self, text = "Combat Tracker", font = ctk.CTkFont(size = 30, weight = "bold"))
-        title_label.pack(padx = 0, pady = 20)
+        title_label.pack(padx = 0, pady = (20, 0))
 
         self.round_label = ctk.CTkLabel(self, text = f"Round: {self.combat_round}", font = ctk.CTkFont(size = 20, weight = "bold"))
         self.round_label.pack(pady = 10)
