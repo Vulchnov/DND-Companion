@@ -518,29 +518,30 @@ class MainWindow(ctk.CTk):
         health_label = ctk.CTkLabel(self.info_list_frame, text="Health", font = ctk.CTkFont(size=15, weight="bold"))
         health_label.grid(row = 0, column = 3, padx = 50)
         
-        if self.isDM:
-            for i in range(len(self.combatantsList)):
-                pName_label = ctk.CTkLabel(self.info_list_frame, text = self.combatantsList[i].pName)
-                pAC_label = ctk.CTkLabel(self.info_list_frame, text = self.combatantsList[i].ac)
-                pName_label.grid(row = i + 1, column = 0)
-                pAC_label.grid(row = i + 1, column = 1)
+        for i in range(len(self.combatantsList)):
+            pName_label = ctk.CTkLabel(self.info_list_frame, text = self.combatantsList[i].pName)
+            pAC_label = ctk.CTkLabel(self.info_list_frame, text = self.combatantsList[i].ac)
+            pName_label.grid(row = i + 1, column = 0)
+            pAC_label.grid(row = i + 1, column = 1)
 
-                if not self.combatantsList[i].saveDC == None:
-                    psaveDCInitiative_label = ctk.CTkLabel(self.info_list_frame, text = self.combatantsList[i].saveDC)
-                    psaveDCInitiative_label.grid(row = i + 1, column = 2)
+            if not self.combatantsList[i].saveDC == None:
+                psaveDCInitiative_label = ctk.CTkLabel(self.info_list_frame, text = self.combatantsList[i].saveDC)
+                psaveDCInitiative_label.grid(row = i + 1, column = 2)
 
-                if not self.combatantsList[i].health == None:
-                    cHealth_label = ctk.CTkLabel(self.info_list_frame, text = self.combatantsList[i].health)
-                    cHealth_label.grid(row = i + 1, column = 3)
-                    health_adjust_frame = ctk.CTkFrame(self.info_list_frame)
-                    health_adjust_frame.grid(row = i+1, column = 4, padx = 10, pady = 10)
-                    cHealth_entry = ctk.CTkEntry(health_adjust_frame, 100, 40)
-                    cHealth_heal_button = ctk.CTkButton(health_adjust_frame, text = "Heal", command = lambda combatant = self.combatantsList[i], entry = cHealth_entry: self.healCombatant(combatant, entry))
-                    cHealth_harm_button = ctk.CTkButton(health_adjust_frame, text = "Harm", command = lambda combatant = self.combatantsList[i], entry = cHealth_entry: self.harmCombatant(combatant, entry))
-                    cHealth_heal_button.pack()
-                    cHealth_entry.pack()
-                    cHealth_harm_button.pack()
-
+            if not self.combatantsList[i].health == None:
+                cHealth_label = ctk.CTkLabel(self.info_list_frame, text = self.combatantsList[i].health)
+                cHealth_label.grid(row = i + 1, column = 3)
+                health_adjust_frame = ctk.CTkFrame(self.info_list_frame)
+                health_adjust_frame.grid(row = i+1, column = 4, padx = 10, pady = 10)
+                cHealth_entry = ctk.CTkEntry(health_adjust_frame, 100, 40)
+                cHealth_heal_button = ctk.CTkButton(health_adjust_frame, text = "Heal", command = lambda combatant = self.combatantsList[i], entry = cHealth_entry: self.healCombatant(combatant, entry))
+                cHealth_harm_button = ctk.CTkButton(health_adjust_frame, text = "Harm", command = lambda combatant = self.combatantsList[i], entry = cHealth_entry: self.harmCombatant(combatant, entry))
+                cHealth_heal_button.pack()
+                cHealth_entry.pack()
+                cHealth_harm_button.pack()
+            
+            remove_button = ctk.CTkButton(self.info_list_frame, text= "Remove", command= lambda combatant = self.combatantsList[i]:self.removeCombatant(combatant))
+            remove_button.grid(row = i + 1, column = 5, pady = 10)
 
 
     #Draw the initiative order
@@ -576,10 +577,6 @@ class MainWindow(ctk.CTk):
                     cInitiative_label = ctk.CTkLabel(self.initiative_frame, text = self.initiativeList[i].initiative)
                     cName_label.grid(row = i + 1, column = 0, pady = 10)
                     cInitiative_label.grid(row = i + 1, column = 1, pady = 10)
-
-                    if self.isDM:
-                        remove_button = ctk.CTkButton(self.initiative_frame, text= "Remove", command= lambda combatant = self.initiativeList[i]:self.removeCombatant(combatant))
-                        remove_button.grid(row = i + 1, column = 2, pady = 10)
 
 
     def displayAddCombatant(self, display_combatant_button, combatant_entry_frame, name_entry, initiative_entry, dex_entry, health_entry, isPlayerCheckBox, add_combatant_button, ac_entry, checkBoxFrame, hasSaveDCCHeckbox):
