@@ -56,7 +56,6 @@ class MainWindow(ctk.CTk):
 
 
         #Main Window
-        self.geometry("1920x1080")
         self.title("DnD Companion")
 
 
@@ -848,7 +847,7 @@ class MainWindow(ctk.CTk):
         button_frame = ctk.CTkFrame(self)
         dm_button = ctk.CTkButton(button_frame, 100, 40, text= "DM", command=self.dmScreen)
         player_button = ctk.CTkButton(button_frame, 100, 40, text= "Player", command=self.playerStartScreen)
-        button_frame.pack(pady = 500)
+        button_frame.pack()
         dm_button.grid(row = 0, column = 0, padx = 20)
         player_button.grid(row = 0, column = 1, padx = 20)
 
